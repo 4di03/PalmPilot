@@ -100,6 +100,7 @@ int main(int argc, char **argv)
     // send it through the network
     Mat inputBlob = blobFromImage(img, scale, Size(W_in, H_in), Scalar(0, 0, 0), false, false);
     net.setInput(inputBlob);
+    
     Mat result = net.forward();
     // the result is an array of "heatmaps", the probability of a body part being in location x,y
     int H = result.size[2];

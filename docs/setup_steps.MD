@@ -20,7 +20,8 @@ mkdir build
 cd build
 cmake .. 
 make -j 4
-./webcam_stream
+cd ..
+build/webcam_stream
 
 # sample usage of hand tracking:
 build/openpose --proto=data/models/pose.prototxt --model=data/models/pose_iter_102000.caffemodel --image=data/hand_sample.png --dataset=HAND
