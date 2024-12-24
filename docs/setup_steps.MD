@@ -22,7 +22,14 @@ cmake ..
 make -j 4
 ./webcam_stream
 
+# sample usage of hand tracking:
+build/openpose --proto=data/models/pose.prototxt --model=data/models/pose_iter_102000.caffemodel --image=data/hand_sample.png --dataset=HAND
+
 ```
 
-Make sure to camke in release mode for actual deployments
+
+Make sure to cmake in release mode for actual deployments
+
+
+
 
