@@ -23,6 +23,7 @@ class VideoStream{
 
     // Release upon destruction
     ~VideoStream(){
+        std::cout << "Releasing camera." << std::endl;
         cap.release();
     }
 };

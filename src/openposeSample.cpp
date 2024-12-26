@@ -105,6 +105,8 @@ int main(int argc, char **argv)
     // the result is an array of "heatmaps", the probability of a body part being in location x,y
     int H = result.size[2];
     int W = result.size[3];
+
+    std::cout << "Result shape: " << result.size << std::endl;
     // find the position of the body parts
     vector<Point> points(22);
     for (int n=0; n<nparts; n++)
