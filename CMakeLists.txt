@@ -18,12 +18,15 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 # Add the source file
 add_executable(mouseControl src/mouseControl.cpp) 
 add_executable(webcam_stream src/cam.cpp )
-add_executable(hand_tracking src/openposeTracker.cpp src/cam.h)
+add_executable(op_tracking src/openposeTracker.cpp src/cam.h src/handTracking.cpp)
+add_executable(fast_tracking src/fastTracker.cpp src/cam.h src/handTracking.cpp)
+
 add_executable(openpose src/openposeSample.cpp)
 add_executable(check_metal src/metalTest.cpp)
 # Link macOS frameworks
 target_link_libraries(mouseControl PRIVATE "-framework CoreGraphics" "-framework CoreFoundation")
 target_link_libraries(webcam_stream ${OpenCV_LIBS})
-target_link_libraries(hand_tracking ${OpenCV_LIBS})
+target_link_libraries(op_tracking ${OpenCV_LIBS})
+target_link_libraries(fast_tracking ${OpenCV_LIBS})
 target_link_libraries(openpose ${OpenCV_LIBS})
 target_link_libraries(check_metal ${OpenCV_LIBS})

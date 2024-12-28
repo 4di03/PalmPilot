@@ -1,6 +1,5 @@
-#include "openposeTracker.h"
-#include "cam.h"
-#include <opencv2/core/ocl.hpp>
+#include "handTracker.h"
+#include "handTracking.h"
 #include <chrono>
 #define MODEL_PATH "data/models/pose_iter_102000.caffemodel"
 #define PROTO_PATH "data/models/pose.prototxt"
@@ -10,7 +9,6 @@
 #define THRESH 0.1
 #define SCALE 0.003922
 #define N_PAIRS 20
-#define INTERP_INTERVAL 10 // extracts the keypoints every 10 frames
 
 
 // represents the pairs of points that are connected in the hand for drwaing
@@ -22,29 +20,10 @@ const int HAND_POSE_PAIRS[N_PAIRS][2] = {   // hand
     {0,17}, {17,18}, {18,19}, {19,20}   // small
 };
 
-/**
- * Draws the keypoints on the image
- * @param image the image to draw the keypoints on
- * @param keypoints the keypoints to draw (22,2) vector
- */
-void drawKeypoints(cv::Mat& img, std::vector<cv::Point>& keypoints){
 
-    for (int n = 0; n < N_PAIRS ; n++){
-        // lookup 2 connected body/hand parts
-        cv::Point2f a = keypoints[HAND_POSE_PAIRS[n][0]];
-        cv::Point2f b = keypoints[HAND_POSE_PAIRS[n][1]];
-        // we did not find enough confidence before
-        if (a.x<=0 || a.y<=0 || b.x<=0 || b.y<=0)
-            continue;
-
-        line(img, a, b, cv::Scalar(0,200,0), 2);
-        circle(img, a, 3, cv::Scalar(0,0,200), -1);
-        circle(img, b, 3, cv::Scalar(0,0,200), -1);
-    }
-}
 
 // Uses opencv OpenPose to track the hand in the image
-class OpenPoseTracker : public openposeTracker{
+class OpenPoseTracker : public HandTracker{
     private:
         cv::dnn::Net net;
     public:
@@ -123,59 +102,6 @@ void printVector(std::vector<cv::Point>& vec){
 
 // prototype for deriving keypoints from the webcame stream frames
 int main(){
-    
-    if (cv::ocl::haveOpenCL()) {
-        std::cout << "OpenCL is available!" << std::endl;
-        cv::ocl::setUseOpenCL(true);
-    } else {
-        std::cout << "OpenCL is not available on this system." << std::endl;
-    }
-    {
-    VideoStream stream(0);
-    int ct = 0;
-    auto tracker = OpenPoseTracker();
-    std::vector<cv::Point> keypoints = std::vector<cv::Point>(22,cv::Point(-1,-1));
-    while (true) {
-        ct++;
-        cv::Mat frame = stream.getFrame();
-
-        // Check if the frame is empty
-        if (frame.empty()) {
-            std::cerr << "Error: Failed to capture frame." << std::endl;
-            break;
-        }
-
-        if (ct % INTERP_INTERVAL == 0){
-
-            auto start = std::chrono::high_resolution_clock::now();
-            keypoints = tracker.getKeypoints(frame);
-            auto end = std::chrono::high_resolution_clock::now();
-            std::chrono::duration<double, std::milli> elapsed = end - start;
-            std::cout << "getKeypoints Execution time: " << elapsed.count() << " ms\n";
-
-
-            ct = 0; // reset the counter to avoid overflow
-        }
-
-        // if the keypoints are found, draw them on the image, else use the previous keypoints
-        // auto start = std::chrono::high_resolution_clock::now();
-        drawKeypoints(frame,keypoints);
-        // auto end = std::chrono::high_resolution_clock::now();
-        // std::chrono::duration<double, std::milli> elapsed = end - start;
-        // std::cout << "drawKeypoints Execution time: " << elapsed.count() << " ms\n";
-
-
-        cv::imshow("Webcam Stream with hands", frame);
-        // Exit the loop when 'q' is pressed
-        if (cv::waitKey(1) == 'q') {
-            break;
-        }
-
-    }
-
-    // Release the camera and destroy all windows
-    cv::destroyAllWindows();
-
-    }
+    runHandTracking((new OpenPoseTracker()));
     return 0;
 }
