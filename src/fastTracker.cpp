@@ -4,9 +4,9 @@
 #include <opencv2/bgsegm.hpp>
 
 #define MAX_DIST 30
-#define INTERVAL 30 // interval for definiting the skin color range givne an image of the palm
+#define INTERVAL 40 // interval for definiting the skin color range givne an image of the palm
 #define PALM_IMAGE_PATH "data/palm.png"
-#define BLUR_SIZE 15
+#define BLUR_SIZE 10
 struct colorRange{
     cv::Scalar lower;
     cv::Scalar upper;
@@ -86,22 +86,24 @@ std::vector<cv::Point> getHandContour(const cv::Mat& handMask) {
 }
 cv::Mat makeHandMask(const cv::Mat& image){
     // Filter by skin color
-    cv::Mat imgHLS;
-    cv::cvtColor(image, imgHLS, cv::COLOR_BGR2HLS);
+    cv::Mat img;
+    cv::cvtColor(image, img, cv::COLOR_BGR2HLS);
     cv::Mat rangeMask;
     colorRange range = getRangeFromImage(PALM_IMAGE_PATH);
 
 
 
-    cv::inRange(imgHLS, range.lower, range.upper, rangeMask);
+    cv::inRange(img, range.lower, range.upper, rangeMask);
+    // dilation to fill gaps in the hand mask
+    cv::dilate(rangeMask, rangeMask, cv::Mat(), cv::Point(-1, -1), 5); 
 
-    // Remove noise
-    cv::Mat blurred;
-    cv::blur(rangeMask, blurred, cv::Size(BLUR_SIZE, BLUR_SIZE));
-    cv::Mat thresholded;
-    cv::threshold(blurred, thresholded, 200, 255, cv::THRESH_BINARY);
+    // closing operation to fill small holes inside the foreground
+    cv::morphologyEx(rangeMask, rangeMask, cv::MORPH_CLOSE, cv::Mat(), cv::Point(-1, -1), 3); 
 
-    return thresholded;
+    // Gaussian blur to smooth the mask
+    cv::GaussianBlur(rangeMask, rangeMask, cv::Size(5, 5), 0); 
+
+    return rangeMask;
 }
 
 // Function to calculate the distance between two points
@@ -199,9 +201,10 @@ class FastTracker : public HandTracker {
         }
 
         std::vector<cv::Point> getKeypoints(const cv::Mat& image){
-            cv::Mat foreground = applyMask(image, subtractBackground(image, backgroundSubtractor));
+            //cv::Mat foreground = applyMask(image, subtractBackground(image, backgroundSubtractor));
 
-            cv::Mat handMask = makeHandMask(foreground);
+            cv::Mat handMask = makeHandMask(image);
+            
             std::vector<cv::Point> contours = getHandContour(handMask);
             std::vector<int> fingertipIndices = getRoughHull(contours, MAX_DIST);
 
@@ -209,7 +212,6 @@ class FastTracker : public HandTracker {
             for (int idx : fingertipIndices) {
                 fingertipPoints.push_back(contours[idx]);
             }
-            cv::imshow("Foreground", handMask);
             cv::imshow("Hand Mask", handMask);
 
 
