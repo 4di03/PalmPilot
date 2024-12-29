@@ -1,5 +1,6 @@
 #include "cam.h"
 #include "handTracker.h"
+#include "handTracking.h"
 #include <chrono>
 #include <opencv2/core/ocl.hpp>
 #define INTERP_INTERVAL 10 // extracts the keypoints every 10 frames
@@ -37,6 +38,7 @@ void runHandTracking(HandTracker* tracker){
     while (true) {
         ct++;
         cv::Mat frame = stream.getFrame();
+        cv::resize(frame, frame, cv::Size(FRAME_WIDTH, FRAME_HEIGHT));
 
         // Check if the frame is empty
         if (frame.empty()) {

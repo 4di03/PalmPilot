@@ -4,13 +4,117 @@
 #include <opencv2/bgsegm.hpp>
 
 #define MAX_DIST 30
-#define INTERVAL 40 // interval for definiting the skin color range givne an image of the palm
+#define INTERVAL 30 // interval for definiting the skin color range givne an image of the palm
 #define PALM_IMAGE_PATH "data/palm.png"
 #define BLUR_SIZE 10
+#define MIN_SOLIDITY 0.5
+#define MAX_SOLIDITY 0.8
+#define MIN_PROP 0.01 // minimum proportion of the image that the hand contour can take up to be considered valid
+#define MAX_PROP 0.1 // maximum proportion of the image that the hand contour can take up to be considered valid
+
 struct colorRange{
     cv::Scalar lower;
     cv::Scalar upper;
 };
+// gets a single contour from a list of contours
+class ContourFilterStrategy{
+    public:
+        virtual std::vector<cv::Point> filterContour(std::vector<std::vector<cv::Point>> contours) = 0;
+};
+// gets valid contours
+class ValidContourStrategy{
+    public:
+        virtual std::vector<std::vector<cv::Point>> getValidContours(std::vector<std::vector<cv::Point>> contours) = 0;
+};
+
+// gets contour with largest area
+class MaxAreaFilter : public ContourFilterStrategy{
+    public:
+        std::vector<cv::Point> filterContour(std::vector<std::vector<cv::Point>> contours){
+            if (contours.empty()) {
+                return std::vector<cv::Point>();
+            }
+            std::vector<cv::Point> maxContour = *(std::max_element(contours.begin(), contours.end(),
+            [](const std::vector<cv::Point>& c0, const std::vector<cv::Point>& c1) {
+                return cv::contourArea(c0) < cv::contourArea(c1);
+            }));
+            return maxContour;
+        }
+};
+// gets contouor with ratio of contour area to convex hull area that is between a certain range, if many exist in that range it, then it applies a secondary filter to get the best one
+class SolidityFilter : public ValidContourStrategy{
+
+    public:
+        std::vector<std::vector<cv::Point>> getValidContours(std::vector<std::vector<cv::Point>> contours){
+            if (contours.empty()) {
+                return std::vector<std::vector<cv::Point>>();
+            }
+            // Sort contours by area in descending order and return the largest one
+
+            std::vector<std::vector<cv::Point>> validContours;
+            for (auto contour : contours){
+                std::vector<cv::Point> hull;
+                cv::convexHull(contour, hull);
+                double area = cv::contourArea(contour);
+                double hullArea = cv::contourArea(hull);
+                double solidity = area/hullArea;
+                if (solidity > MIN_SOLIDITY && solidity < MAX_SOLIDITY){
+                    validContours.push_back(contour);
+                }
+            }
+            return validContours;
+        }
+};
+// filters out contours that take up too much or too little of the image
+class AreaFilter : public ValidContourStrategy{
+    public:
+        std::vector<std::vector<cv::Point>> getValidContours(std::vector<std::vector<cv::Point>> contours){
+            std:: cout  << "Applying area filter" << std::endl;
+            if (contours.empty()) {
+                return std::vector<std::vector<cv::Point>>();
+            }
+            // Sort contours by area in descending order and return the largest one
+
+            std::vector<std::vector<cv::Point>> validContours;
+            double imageArea = FRAME_WIDTH * FRAME_HEIGHT;
+            for (auto contour : contours){
+                double prop = cv::contourArea(contour) / imageArea;
+            
+                if (prop > MIN_PROP && prop < MAX_PROP){
+
+                    validContours.push_back(contour);
+                }
+            }
+            return validContours;
+        }
+
+};
+
+class CompositeFilter : public ContourFilterStrategy{
+    public:
+        std::vector<ValidContourStrategy*> validFilters;
+        ContourFilterStrategy* finalSelector;
+        CompositeFilter(std::vector<ValidContourStrategy*> validFilters, ContourFilterStrategy* finalSelector){
+            this->validFilters = validFilters;
+            this->finalSelector = finalSelector;
+        }
+        std::vector<cv::Point> filterContour(std::vector<std::vector<cv::Point>> contours){
+            std::vector<std::vector<cv::Point>> validContours(contours);
+
+            // Apply each filter in sequence until a valid contour is found
+            for (auto filter : validFilters){
+                validContours = filter->getValidContours(validContours);
+                if (!validContours.empty()){
+                    break;
+                }
+            }
+
+            // apply the final filter
+            return finalSelector->filterContour(validContours);
+        }
+};
+
+ 
 
 /**
  * Subtracts the background from the given frame .
@@ -72,18 +176,7 @@ cv::Mat applyMask(const cv::Mat& image, const cv::Mat& mask) {
 auto skinColorUpper = [](int hue) { return cv::Scalar(hue, 0.5 * 255, 0.6 * 255); };
 auto skinColorLower = [](int hue) { return cv::Scalar(hue, 0.1 * 255, 0.05 * 255); };
 
-// Function to get the largest hand contour
-std::vector<cv::Point> getHandContour(const cv::Mat& handMask) {
-    std::vector<std::vector<cv::Point>> contours;
-    cv::findContours(handMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
 
-    // Sort contours by area in descending order and return the largest one
-    std::sort(contours.begin(), contours.end(), [](const std::vector<cv::Point>& c0, const std::vector<cv::Point>& c1) {
-        return cv::contourArea(c0) > cv::contourArea(c1);
-    });
-
-    return contours.empty() ? std::vector<cv::Point>() : contours[0];
-}
 cv::Mat makeHandMask(const cv::Mat& image){
     // Filter by skin color
     cv::Mat img;
@@ -176,44 +269,34 @@ std::vector<int> getRoughHull(const std::vector<cv::Point>& contour, double maxD
 }
 
 
-/**
- * Initializes and configures a BackgroundSubtractorMOG2 instance.
- * @return A configured BackgroundSubtractorMOG2 instance.
- */
-cv::Ptr<cv::BackgroundSubtractorMOG2> initBackgroundSubtractor() {
-    // Create a BackgroundSubtractorMOG2 instance
-    auto subtractor = cv::createBackgroundSubtractorMOG2();
-
-    // Configure the background subtractor
-    subtractor->setHistory(100);            // Number of frames for background learning
-    subtractor->setVarThreshold(15);        // Threshold for foreground detection
-    //subtractor->setDetectShadows(true);    // Disable shadow detection
-
-    return subtractor;
-}
 // Gets the keypoints of the fingertips of the hand using Contour Detection and Convex Hull
 class FastTracker : public HandTracker {
     public:
-        // Background subtractor for removing the background, this object is stateful and should be reinitialized for each new video stream
-        cv::Ptr<cv::BackgroundSubtractor> backgroundSubtractor;
-        FastTracker() {
-            backgroundSubtractor = initBackgroundSubtractor();
+        ContourFilterStrategy* filterStrategy;
+        FastTracker(ContourFilterStrategy* filterStrategy){ 
+            this->filterStrategy = filterStrategy;
+
         }
 
         std::vector<cv::Point> getKeypoints(const cv::Mat& image){
-            //cv::Mat foreground = applyMask(image, subtractBackground(image, backgroundSubtractor));
 
             cv::Mat handMask = makeHandMask(image);
+                
+            std::vector<std::vector<cv::Point>> contours;
+            cv::findContours(handMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+            std::vector<cv::Point> contour = filterStrategy->filterContour(contours);
             
-            std::vector<cv::Point> contours = getHandContour(handMask);
-            std::vector<int> fingertipIndices = getRoughHull(contours, MAX_DIST);
+            // draw the contour
+            cv::Mat contourImage = cv::Mat::zeros(handMask.size(), CV_8UC3);
+            cv::drawContours(contourImage, std::vector<std::vector<cv::Point>>{contour}, -1, cv::Scalar(0, 255, 0), 2);
+            cv::imshow("Contour", contourImage);
 
+            std::vector<int> fingertipIndices = getRoughHull(contour, MAX_DIST);
             std::vector<cv::Point> fingertipPoints = {};
             for (int idx : fingertipIndices) {
-                fingertipPoints.push_back(contours[idx]);
+                fingertipPoints.push_back(contour[idx]);
             }
             cv::imshow("Hand Mask", handMask);
-
 
             // TODO: standardize the shape of the output to handle things that may retuirn more or less than all the hand keypoints
             return fingertipPoints;
@@ -222,6 +305,10 @@ class FastTracker : public HandTracker {
 
 // prototype for deriving keypoints from the webcame stream frames
 int main(){
-    runHandTracking((new FastTracker()));
+
+    ContourFilterStrategy* filter = new CompositeFilter({new AreaFilter(),new SolidityFilter()}, new MaxAreaFilter());
+    HandTracker* tracker = new FastTracker(filter);
+
+    runHandTracking(tracker);
     return 0;
 }
