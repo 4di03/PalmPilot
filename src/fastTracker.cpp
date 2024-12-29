@@ -10,7 +10,7 @@
 #define MIN_SOLIDITY 0.5
 #define MAX_SOLIDITY 0.8
 #define MIN_PROP 0.01 // minimum proportion of the image that the hand contour can take up to be considered valid
-#define MAX_PROP 0.1 // maximum proportion of the image that the hand contour can take up to be considered valid
+#define MAX_PROP 0.3 // maximum proportion of the image that the hand contour can take up to be considered valid
 
 struct colorRange{
     cv::Scalar lower;
@@ -116,27 +116,6 @@ class CompositeFilter : public ContourFilterStrategy{
 
  
 
-/**
- * Subtracts the background from the given frame .
- * Initializes the background subtractor internally.
- * @param frame The current frame (input image).
- * @param backgroundSubtractor The background subtractor.
- * @return The foreground mask with the background subtracted.
- */
-cv::Mat subtractBackground(const cv::Mat& frame, cv::Ptr<cv::BackgroundSubtractor> backgroundSubtractor) {
-
-    cv::Mat fgMask;
-
-    // Apply the background subtractor to the frame
-    backgroundSubtractor->apply(frame, fgMask);
-
-    
-    // Optional: Clean up the foreground mask
-    cv::erode(fgMask, fgMask, cv::Mat(), cv::Point(-1, -1), 1);
-    cv::dilate(fgMask, fgMask, cv::Mat(), cv::Point(-1, -1), 1);
-
-    return fgMask;
-}
 // gets a lower and upper range of the HLS colors given the average color of the palm
 colorRange getRangeFromImage(std::string imagePath){
     cv::Mat image = cv::imread(imagePath);
@@ -188,10 +167,10 @@ cv::Mat makeHandMask(const cv::Mat& image){
 
     cv::inRange(img, range.lower, range.upper, rangeMask);
     // dilation to fill gaps in the hand mask
-    cv::dilate(rangeMask, rangeMask, cv::Mat(), cv::Point(-1, -1), 5); 
+    cv::dilate(rangeMask, rangeMask, cv::Mat(), cv::Point(-1, -1), 4); 
 
     // closing operation to fill small holes inside the foreground
-    cv::morphologyEx(rangeMask, rangeMask, cv::MORPH_CLOSE, cv::Mat(), cv::Point(-1, -1), 3); 
+    cv::morphologyEx(rangeMask, rangeMask, cv::MORPH_CLOSE, cv::Mat(), cv::Point(-1, -1), 4); 
 
     // Gaussian blur to smooth the mask
     cv::GaussianBlur(rangeMask, rangeMask, cv::Size(5, 5), 0); 
