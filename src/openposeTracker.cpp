@@ -1,6 +1,8 @@
 #include "handTracker.h"
 #include "handTracking.h"
 #include <chrono>
+#include <opencv2/opencv.hpp>
+
 #define MODEL_PATH "data/models/pose_iter_102000.caffemodel"
 #define PROTO_PATH "data/models/pose.prototxt"
 #define W_IN 368

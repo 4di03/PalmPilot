@@ -1,5 +1,6 @@
 #include "handTracking.h"
 #include "handTracker.h"
+#include "removeFace.h"
 #include <opencv2/opencv.hpp>
 #include <opencv2/bgsegm.hpp>
 
@@ -158,8 +159,16 @@ auto skinColorLower = [](int hue) { return cv::Scalar(hue, 0.1 * 255, 0.05 * 255
 
 cv::Mat makeHandMask(const cv::Mat& image){
     // Filter by skin color
-    cv::Mat img;
-    cv::cvtColor(image, img, cv::COLOR_BGR2HLS);
+    cv::Mat img = removeFace(image);
+
+    
+
+
+    cv::cvtColor(img, img, cv::COLOR_BGR2HLS);
+
+
+
+
     cv::Mat rangeMask;
     colorRange range = getRangeFromImage(PALM_IMAGE_PATH);
 
