@@ -1,9 +1,9 @@
 #include "handTracking.h"
 #include "handTracker.h"
 #include "removeFace.h"
+#include "backgroundSubtraction.h"
 #include <opencv2/opencv.hpp>
 #include <opencv2/bgsegm.hpp>
-
 #define MAX_DIST 30
 #define INTERVAL 30 // interval for definiting the skin color range givne an image of the palm
 #define PALM_IMAGE_PATH "data/palm.png"
@@ -12,6 +12,8 @@
 #define MAX_SOLIDITY 0.8
 #define MIN_PROP 0.01 // minimum proportion of the image that the hand contour can take up to be considered valid
 #define MAX_PROP 0.3 // maximum proportion of the image that the hand contour can take up to be considered valid
+
+
 
 struct colorRange{
     cv::Scalar lower;
@@ -70,7 +72,6 @@ class SolidityFilter : public ValidContourStrategy{
 class AreaFilter : public ValidContourStrategy{
     public:
         std::vector<std::vector<cv::Point>> getValidContours(std::vector<std::vector<cv::Point>> contours){
-            std:: cout  << "Applying area filter" << std::endl;
             if (contours.empty()) {
                 return std::vector<std::vector<cv::Point>>();
             }
@@ -115,6 +116,123 @@ class CompositeFilter : public ContourFilterStrategy{
         }
 };
 
+class HandMaskPostProcessingStrategy{
+    public:
+        virtual cv::Mat postProcess(const cv::Mat& mask) = 0;
+};
+
+class GaussianBlurPostProcessing : public HandMaskPostProcessingStrategy{
+    private:
+        int blurSize;
+    public:
+        GaussianBlurPostProcessing(int blurSize = 5){
+            this->blurSize = blurSize;
+        }
+        
+        cv::Mat postProcess(const cv::Mat& mask){
+            cv::GaussianBlur(mask, mask, cv::Size(blurSize, blurSize), 0); 
+            return mask;
+        }
+};
+
+class DilationPostProcessing : public HandMaskPostProcessingStrategy{
+    private:
+        int dilationIterations;
+    public:
+        DilationPostProcessing(int dilationIterations = 4){
+            this->dilationIterations = dilationIterations;
+        }
+        
+        cv::Mat postProcess(const cv::Mat& mask){
+            cv::dilate(mask, mask, cv::Mat(), cv::Point(-1, -1), dilationIterations); 
+            return mask;
+        }
+};
+
+class ClosingPostProcessing : public HandMaskPostProcessingStrategy{
+    private:
+        int closingIterations;
+    public:
+        ClosingPostProcessing(int closingIterations = 4){
+            this->closingIterations = closingIterations;
+        }
+        
+        cv::Mat postProcess(const cv::Mat& mask){
+            cv::morphologyEx(mask, mask, cv::MORPH_CLOSE, cv::Mat(), cv::Point(-1, -1), closingIterations); 
+            return mask;
+        }
+};
+
+class OpeningPostProcessing: public HandMaskPostProcessingStrategy{
+    private:
+        int openingIterations;
+    public:
+        OpeningPostProcessing(int openingIterations = 4){
+            this->openingIterations = openingIterations;
+        }
+        
+        cv::Mat postProcess(const cv::Mat& mask){
+            cv::morphologyEx(mask, mask, cv::MORPH_OPEN, cv::Mat(), cv::Point(-1, -1), openingIterations); 
+            return mask;
+        }
+};
+// applies a series of post processing strategies to the mask
+class CompositePostProcessing : public HandMaskPostProcessingStrategy{
+    private:
+        // vector of post processing strategies, will be applied in order
+        std::vector<HandMaskPostProcessingStrategy*> postProcessingStrategies;
+    public:
+        CompositePostProcessing(std::vector<HandMaskPostProcessingStrategy*> postProcessingStrategies){
+            this->postProcessingStrategies = postProcessingStrategies;
+        }
+        
+        cv::Mat postProcess(const cv::Mat& mask){
+            cv::Mat processedMask = mask;
+            for (auto strategy : postProcessingStrategies){
+                processedMask = strategy->postProcess(processedMask);
+            }
+            return processedMask;
+        }
+};
+
+// gets binary mask of the hand
+class HandMaskStrategy{
+    private: 
+        HandMaskPostProcessingStrategy* postProcessingStrategy;
+
+    public:
+        HandMaskStrategy(HandMaskPostProcessingStrategy* postProcessingStrategy){
+            this->postProcessingStrategy = postProcessingStrategy;
+        }
+       
+       cv::Mat makeHandMask(const cv::Mat& image){
+            static colorRange range = getRangeFromImage(PALM_IMAGE_PATH);
+
+            // Filter by skin color
+            cv::Mat img = removeFace(image);
+
+            cv::cvtColor(img, img, cv::COLOR_BGR2HLS);
+
+            cv::Mat rangeMask;
+
+            cv::inRange(img, range.lower, range.upper, rangeMask);
+
+            cv::imshow("Raw Mask", rangeMask);
+
+            // // dilation to fill gaps in the hand mask
+            // cv::dilate(rangeMask, rangeMask, cv::Mat(), cv::Point(-1, -1), 4); 
+
+            // // closing operation to fill small holes inside the foreground
+            // cv::morphologyEx(rangeMask, rangeMask, cv::MORPH_CLOSE, cv::Mat(), cv::Point(-1, -1), 4); 
+
+            // // Gaussian blur to smooth the mask
+            // cv::GaussianBlur(rangeMask, rangeMask, cv::Size(5, 5), 0); 
+
+            return postProcessingStrategy->postProcess(rangeMask);;
+        };
+};
+
+
  
 
 // gets a lower and upper range of the HLS colors given the average color of the palm
@@ -125,9 +243,13 @@ colorRange getRangeFromImage(std::string imagePath){
     cv::Scalar avgHLS = cv::mean(imgHLS);
     cv::Scalar lower = cv::Scalar(avgHLS[0] - INTERVAL, avgHLS[1] - INTERVAL, avgHLS[2] - INTERVAL);
     cv::Scalar upper = cv::Scalar(avgHLS[0] + INTERVAL, avgHLS[1] + INTERVAL, avgHLS[2] + INTERVAL);
-
+    
+    std::cout << "Lower: " << lower << std::endl;
+    std::cout << "Upper: " << upper << std::endl;
     return colorRange{lower,upper};
 }
+
+
 /**
  * Applies a binary mask to an image.
  * @param image The input image (original frame).
@@ -157,35 +279,6 @@ auto skinColorUpper = [](int hue) { return cv::Scalar(hue, 0.5 * 255, 0.6 * 255)
 auto skinColorLower = [](int hue) { return cv::Scalar(hue, 0.1 * 255, 0.05 * 255); };
 
 
-cv::Mat makeHandMask(const cv::Mat& image){
-    // Filter by skin color
-    cv::Mat img = removeFace(image);
-
-    
-
-
-    cv::cvtColor(img, img, cv::COLOR_BGR2HLS);
-
-
-
-
-    cv::Mat rangeMask;
-    colorRange range = getRangeFromImage(PALM_IMAGE_PATH);
-
-
-
-    cv::inRange(img, range.lower, range.upper, rangeMask);
-    // dilation to fill gaps in the hand mask
-    cv::dilate(rangeMask, rangeMask, cv::Mat(), cv::Point(-1, -1), 4); 
-
-    // closing operation to fill small holes inside the foreground
-    cv::morphologyEx(rangeMask, rangeMask, cv::MORPH_CLOSE, cv::Mat(), cv::Point(-1, -1), 4); 
-
-    // Gaussian blur to smooth the mask
-    cv::GaussianBlur(rangeMask, rangeMask, cv::Size(5, 5), 0); 
-
-    return rangeMask;
-}
 
 // Function to calculate the distance between two points
 double ptDist(const cv::Point& pt1, const cv::Point& pt2) {
@@ -259,17 +352,23 @@ std::vector<int> getRoughHull(const std::vector<cv::Point>& contour, double maxD
 
 // Gets the keypoints of the fingertips of the hand using Contour Detection and Convex Hull
 class FastTracker : public HandTracker {
-    public:
+    private:
         ContourFilterStrategy* filterStrategy;
-        FastTracker(ContourFilterStrategy* filterStrategy){ 
+        HandMaskStrategy* maskStrategy;
+    public:
+        FastTracker(ContourFilterStrategy* filterStrategy, HandMaskStrategy* maskStrategy){ 
             this->filterStrategy = filterStrategy;
+            this->maskStrategy = maskStrategy;
 
         }
 
         std::vector<cv::Point> getKeypoints(const cv::Mat& image){
+            static cv::Mat background = initBackground();
 
-            cv::Mat handMask = makeHandMask(image);
-                
+            cv::Mat foreground = backgroundSubtraction(background,image);
+            cv::imshow("Foreground", foreground);
+            cv::Mat handMask = maskStrategy->makeHandMask(foreground);
+            
             std::vector<std::vector<cv::Point>> contours;
             cv::findContours(handMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
             std::vector<cv::Point> contour = filterStrategy->filterContour(contours);
@@ -294,8 +393,17 @@ class FastTracker : public HandTracker {
 // prototype for deriving keypoints from the webcame stream frames
 int main(){
 
+    HandMaskStrategy* maskStrategy = new HandMaskStrategy(
+        new CompositePostProcessing(
+            {
+            new GaussianBlurPostProcessing(5), 
+            new DilationPostProcessing(4), 
+            new ClosingPostProcessing(4)
+            }
+        )
+    );
     ContourFilterStrategy* filter = new CompositeFilter({new AreaFilter(),new SolidityFilter()}, new MaxAreaFilter());
-    HandTracker* tracker = new FastTracker(filter);
+    HandTracker* tracker = new FastTracker(filter, maskStrategy);
 
     runHandTracking(tracker);
     return 0;

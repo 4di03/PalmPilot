@@ -52,7 +52,7 @@ void runHandTracking(HandTracker* tracker){
             keypoints = tracker->getKeypoints(frame);
             auto end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double, std::milli> elapsed = end - start;
-            std::cout << "getKeypoints Execution time: " << elapsed.count() << " ms\n";
+            //std::cout << "getKeypoints Execution time: " << elapsed.count() << " ms\n";
 
 
             ct = 0; // reset the counter to avoid overflow
