@@ -37,5 +37,8 @@ class FaceRemover{
 cv::Mat removeFace(const cv::Mat inputImg){
     // only loads in the model the ifrst time this function is called
     static FaceRemover faceRemover = FaceRemover();
-    return faceRemover.removeFace(inputImg);
+    cv::Mat output = faceRemover.removeFace(inputImg);
+    cv::imshow("With Face", inputImg);
+    cv::imshow("Face Removed", output);
+    return output;
 }

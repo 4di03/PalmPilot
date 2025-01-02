@@ -5,20 +5,57 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/bgsegm.hpp>
 #define MAX_DIST 30
-#define INTERVAL 30 // interval for definiting the skin color range givne an image of the palm
-#define PALM_IMAGE_PATH "data/palm.png"
+#define INTERVAL 20 // interval for definiting the skin color range givne an image of the palm
+#define ST_DEVS_DIFF 3 // number of standard deviations to consider for the range
+#define PALM_IMAGE_PATH "data/palm_258pm.png"
 #define BLUR_SIZE 10
 #define MIN_SOLIDITY 0.5
 #define MAX_SOLIDITY 0.8
 #define MIN_PROP 0.01 // minimum proportion of the image that the hand contour can take up to be considered valid
 #define MAX_PROP 0.3 // maximum proportion of the image that the hand contour can take up to be considered valid
-
-
-
+#define COLOR_CONVERSION cv::COLOR_BGR2YCrCb
 struct colorRange{
     cv::Scalar lower;
     cv::Scalar upper;
 };
+void printMat(const cv::Mat& mat) {
+    for (int i = 0; i < mat.rows; i++) {
+        for (int j = 0; j < mat.cols; j++) {
+            // For single-channel matrices
+            if (mat.channels() == 1) {
+                std::cout << mat.at<uchar>(i, j) << " ";
+            }
+            // For multi-channel matrices 
+            else if (mat.channels() == 3) {
+                cv::Vec3b pixel = mat.at<cv::Vec3b>(i, j);
+                std::cout << "[" << (int)pixel[0] << ", " << (int)pixel[1] << ", " << (int)pixel[2] << "] ";
+            }
+        }
+        std::cout << std::endl;
+    }
+}
+// gets a lower and upper range of the  colors given the average color of the palm
+colorRange getRangeFromImage(std::string imagePath){
+    cv::Mat image = cv::imread(imagePath);
+    cv::Mat img;
+    cv::cvtColor(image, img, COLOR_CONVERSION);
+    cv::Scalar mean, stddev;
+    cv::meanStdDev(img, mean, stddev);
+    
+    //printMat(img);
+
+
+    std:: cout << "Mean: " << mean << std::endl;
+    std:: cout << "Stddev: " << stddev << std::endl;
+    cv::Scalar lower(mean[0] - ST_DEVS_DIFF * stddev[0] , mean[1] - ST_DEVS_DIFF * stddev[1], mean[2] - ST_DEVS_DIFF * stddev[2]);
+    cv::Scalar upper(mean[0]  + ST_DEVS_DIFF * stddev[0], mean[1] + ST_DEVS_DIFF * stddev[1], mean[2] + ST_DEVS_DIFF * stddev[2]);
+    
+    std::cout << "Lower: " << lower << std::endl;
+    std::cout << "Upper: " << upper << std::endl;
+    return colorRange{lower,upper};
+}
+
+
 // gets a single contour from a list of contours
 class ContourFilterStrategy{
     public:
@@ -209,9 +246,8 @@ class HandMaskStrategy{
             static colorRange range = getRangeFromImage(PALM_IMAGE_PATH);
 
             // Filter by skin color
-            cv::Mat img = removeFace(image);
-
-            cv::cvtColor(img, img, cv::COLOR_BGR2HLS);
+            cv::Mat img;
+            cv::cvtColor(image, img, COLOR_CONVERSION);
 
             cv::Mat rangeMask;
 
@@ -219,35 +255,12 @@ class HandMaskStrategy{
 
             cv::imshow("Raw Mask", rangeMask);
 
-            // // dilation to fill gaps in the hand mask
-            // cv::dilate(rangeMask, rangeMask, cv::Mat(), cv::Point(-1, -1), 4); 
-
-            // // closing operation to fill small holes inside the foreground
-            // cv::morphologyEx(rangeMask, rangeMask, cv::MORPH_CLOSE, cv::Mat(), cv::Point(-1, -1), 4); 
-
-            // // Gaussian blur to smooth the mask
-            // cv::GaussianBlur(rangeMask, rangeMask, cv::Size(5, 5), 0); 
-
             return postProcessingStrategy->postProcess(rangeMask);;
         };
 };
 
 
  
-
-// gets a lower and upper range of the HLS colors given the average color of the palm
-colorRange getRangeFromImage(std::string imagePath){
-    cv::Mat image = cv::imread(imagePath);
-    cv::Mat imgHLS;
-    cv::cvtColor(image, imgHLS, cv::COLOR_BGR2HLS);
-    cv::Scalar avgHLS = cv::mean(imgHLS);
-    cv::Scalar lower = cv::Scalar(avgHLS[0] - INTERVAL, avgHLS[1] - INTERVAL, avgHLS[2] - INTERVAL);
-    cv::Scalar upper = cv::Scalar(avgHLS[0] + INTERVAL, avgHLS[1] + INTERVAL, avgHLS[2] + INTERVAL);
-    
-    std::cout << "Lower: " << lower << std::endl;
-    std::cout << "Upper: " << upper << std::endl;
-    return colorRange{lower,upper};
-}
 
 
 /**
@@ -365,7 +378,7 @@ class FastTracker : public HandTracker {
         std::vector<cv::Point> getKeypoints(const cv::Mat& image){
             static cv::Mat background = initBackground();
 
-            cv::Mat foreground = backgroundSubtraction(background,image);
+            cv::Mat foreground = backgroundSubtraction(background,removeFace(image));
             cv::imshow("Foreground", foreground);
             cv::Mat handMask = maskStrategy->makeHandMask(foreground);
             

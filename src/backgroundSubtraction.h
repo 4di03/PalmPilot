@@ -1,7 +1,8 @@
 #include <opencv2/opencv.hpp>
 #include "handTracking.h"
-#define THRESH_MIN 50
+#define THRESH_MIN 0
 #define THRESH_MAX 255
+#define FOREGROUND_DILATION_ITERATIONS 10
 cv::Mat initBackground(){
     std::cout << "initalizing background image." << std::endl;
     cv::Mat background = cv::imread("data/background.png");
@@ -17,47 +18,14 @@ cv::Mat backgroundSubtraction(const cv::Mat& background, const cv::Mat& frame) {
         exit(1);
     }
 
-    // Split the channels
-    std::vector<cv::Mat> bgChannels, frameChannels;
-    cv::split(background, bgChannels);
-    cv::split(frame, frameChannels);
-
-    // Initialize containers for processed channels
-    std::vector<cv::Mat> processedChannels(bgChannels.size());
-
-    // Process each channel independently
-    for (size_t i = 0; i < bgChannels.size(); ++i) {
-        // Absolute difference for the current channel
-        cv::Mat diff;
-        cv::absdiff(bgChannels[i], frameChannels[i], diff);
-
-        // Normalize the difference to the range [0, 255]
-        double minVal, maxVal;
-        cv::minMaxLoc(diff, &minVal, &maxVal);
-        if (maxVal > 0) {
-            diff.convertTo(diff, CV_8U, 255.0 / maxVal);
-        }
-
-        // Threshold dynamically
-        cv::Mat thresh;
-        double threshMin = THRESH_MIN; // Minimum difference to consider significant
-        double threshMax = THRESH_MAX; // Maximum value (already normalized)
-        cv::inRange(diff, threshMin, threshMax, thresh);
-
-        // Apply morphological operations to reduce noise
-        cv::Mat kernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(3, 3));
-        cv::morphologyEx(thresh, processedChannels[i], cv::MORPH_OPEN, kernel);
-    }
-
-    // Merge the channels using addition
-    cv::Mat mergedChannels = cv::Mat::zeros(processedChannels[0].size(), processedChannels[0].type());
-    for (const auto& channel : processedChannels) {
-        cv::add(mergedChannels, channel, mergedChannels);
-    }
-
-    // Mask the original frame
+    cv::Mat diff = frame - background;
     cv::Mat mask;
-    cv::threshold(mergedChannels, mask, 50, 255, cv::THRESH_BINARY);
+
+    cv::inRange(diff, THRESH_MIN, THRESH_MAX, mask); // 255 for values within the threshold, 0 otherwise
+
+    // dilate the mask to fill in holes
+    cv::dilate(mask, mask, cv::Mat(), cv::Point(-1, -1), FOREGROUND_DILATION_ITERATIONS);
+
     cv::bitwise_and(frame, frame, output, mask);
 
     return output;
