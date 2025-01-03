@@ -7,7 +7,7 @@
 #define MAX_DIST 30
 #define INTERVAL 20 // interval for definiting the skin color range givne an image of the palm
 #define ST_DEVS_DIFF 3 // number of standard deviations to consider for the range
-#define PALM_IMAGE_PATH "data/palm_258pm.png"
+#define PALM_IMAGE_PATH "data/palm_553pm.png"
 #define BLUR_SIZE 10
 #define MIN_SOLIDITY 0.5
 #define MAX_SOLIDITY 0.8
@@ -378,7 +378,7 @@ class FastTracker : public HandTracker {
         std::vector<cv::Point> getKeypoints(const cv::Mat& image){
             static cv::Mat background = initBackground();
 
-            cv::Mat foreground = backgroundSubtraction(background,removeFace(image));
+            cv::Mat foreground = backgroundSubtraction(background,(image));
             cv::imshow("Foreground", foreground);
             cv::Mat handMask = maskStrategy->makeHandMask(foreground);
             
