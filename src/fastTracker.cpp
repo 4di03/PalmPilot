@@ -375,7 +375,7 @@ class FastTracker : public HandTracker {
 
         }
 
-        std::vector<cv::Point> getKeypoints(const cv::Mat& image){
+        HandData getHandData(const cv::Mat& image){
             static cv::Mat background = initBackground();
 
             cv::Mat foreground = backgroundSubtraction(background,(image));
@@ -399,7 +399,7 @@ class FastTracker : public HandTracker {
             cv::imshow("Hand Mask", handMask);
 
             // TODO: standardize the shape of the output to handle things that may retuirn more or less than all the hand keypoints
-            return fingertipPoints;
+            return HandData{fingertipPoints[0],(int) fingertipPoints.size(),true};
         }
 };
 

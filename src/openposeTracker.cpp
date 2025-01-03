@@ -25,7 +25,7 @@ const int HAND_POSE_PAIRS[N_PAIRS][2] = {   // hand
 
 
 // Uses opencv OpenPose to track the hand in the image
-class OpenPoseTracker : public HandTracker{
+class OpenPoseTracker : public HandKeypointTracker{
     private:
         cv::dnn::Net net;
     public:
@@ -104,6 +104,6 @@ void printVector(std::vector<cv::Point>& vec){
 
 // prototype for deriving keypoints from the webcame stream frames
 int main(){
-    runHandTracking((new OpenPoseTracker()));
+    plotHandKeypoints((new OpenPoseTracker()));
     return 0;
 }

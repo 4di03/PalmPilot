@@ -22,8 +22,21 @@ void drawKeypoints(cv::Mat& img, std::vector<cv::Point>& keypoints){
         circle(img, a, 3, cv::Scalar(0,0,200), -1);
     }
 }
+
+
+/**
+ * Displays the hand data on the image
+ * @param image the image to draw the keypoints on
+ * @param handData handData info to print/display
+ */
+void displayHandData(cv::Mat& img, HandData& handData){
+    std::cout << "Hand Found: "<< handData.handDetected << std::endl;
+    std::cout << "Index Finger Position: " << handData.indexFingerPosition << std::endl;
+    std::cout << "Number Fingers Raised: " << handData.numFingersRaised << std::endl;
+    circle(img, handData.indexFingerPosition, 3, cv::Scalar(0,0,200), -1);
+}
 // runs hand tracker on vide stream and draws keypoints 
-void runHandTracking(HandTracker* tracker){
+void plotHandKeypoints(HandKeypointTracker* tracker){
 
     if (cv::ocl::haveOpenCL()) {
         std::cout << "OpenCL is available!" << std::endl;
@@ -80,3 +93,58 @@ void runHandTracking(HandTracker* tracker){
     }
 }
 
+void runHandTracking(HandTracker* tracker){
+
+    if (cv::ocl::haveOpenCL()) {
+        std::cout << "OpenCL is available!" << std::endl;
+        cv::ocl::setUseOpenCL(true);
+    } else {
+        std::cout << "OpenCL is not available on this system." << std::endl;
+    }
+    {
+    VideoStream stream(0);
+    int ct = 0;
+    while (true) {
+        ct++;
+        cv::Mat frame = stream.getFrame();
+        cv::resize(frame, frame, cv::Size(FRAME_WIDTH, FRAME_HEIGHT));  
+
+        
+        // Check if the frame is empty
+        if (frame.empty()) {
+            std::cerr << "Error: Failed to capture frame." << std::endl;
+            break;
+        }
+        HandData handData;
+        if (ct % INTERP_INTERVAL == 0){
+
+            auto start = std::chrono::high_resolution_clock::now();
+            handData = tracker->getHandData(frame);
+            auto end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::milli> elapsed = end - start;
+
+
+            ct = 0; // reset the counter to avoid overflow
+        }
+
+        // if the keypoints are found, draw them on the image, else use the previous keypoints
+        // auto start = std::chrono::high_resolution_clock::now();
+        displayHandData(frame,handData);
+        // auto end = std::chrono::high_resolution_clock::now();
+        // std::chrono::duration<double, std::milli> elapsed = end - start;
+        // std::cout << "drawKeypoints Execution time: " << elapsed.count() << " ms\n";
+
+
+        cv::imshow("Webcam Stream with hands", frame);
+        // Exit the loop when 'q' is pressed
+        if (cv::waitKey(1) == 'q') {
+            break;
+        }
+
+    }
+
+    // Release the camera and destroy all windows
+    cv::destroyAllWindows();
+
+    }
+}
