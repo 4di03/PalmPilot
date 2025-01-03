@@ -7,7 +7,7 @@
 #define MAX_DIST 30
 #define INTERVAL 20 // interval for definiting the skin color range givne an image of the palm
 #define ST_DEVS_DIFF 3 // number of standard deviations to consider for the range
-#define PALM_IMAGE_PATH "data/palm_553pm.png"
+#define PALM_IMAGE_PATH "data/palm_248_light.png"
 #define BLUR_SIZE 10
 #define MIN_SOLIDITY 0.5
 #define MAX_SOLIDITY 0.8
@@ -45,13 +45,13 @@ colorRange getRangeFromImage(std::string imagePath){
     //printMat(img);
 
 
-    std:: cout << "Mean: " << mean << std::endl;
-    std:: cout << "Stddev: " << stddev << std::endl;
+    // std:: cout << "Mean: " << mean << std::endl;
+    // std:: cout << "Stddev: " << stddev << std::endl;
     cv::Scalar lower(mean[0] - ST_DEVS_DIFF * stddev[0] , mean[1] - ST_DEVS_DIFF * stddev[1], mean[2] - ST_DEVS_DIFF * stddev[2]);
     cv::Scalar upper(mean[0]  + ST_DEVS_DIFF * stddev[0], mean[1] + ST_DEVS_DIFF * stddev[1], mean[2] + ST_DEVS_DIFF * stddev[2]);
     
-    std::cout << "Lower: " << lower << std::endl;
-    std::cout << "Upper: " << upper << std::endl;
+    // std::cout << "Lower: " << lower << std::endl;
+    // std::cout << "Upper: " << upper << std::endl;
     return colorRange{lower,upper};
 }
 
@@ -397,9 +397,10 @@ class FastTracker : public HandTracker {
                 fingertipPoints.push_back(contour[idx]);
             }
             cv::imshow("Hand Mask", handMask);
-
+            
+            int numFingersRaised = static_cast<int>(fingertipPoints.size());
             // TODO: standardize the shape of the output to handle things that may retuirn more or less than all the hand keypoints
-            return HandData{fingertipPoints[0],(int) fingertipPoints.size(),true};
+            return HandData{numFingersRaised > 0 ? fingertipPoints[0] : cv::Point(-1,-1),numFingersRaised,numFingersRaised > 0};
         }
 };
 
@@ -409,9 +410,10 @@ int main(){
     HandMaskStrategy* maskStrategy = new HandMaskStrategy(
         new CompositePostProcessing(
             {
-            new GaussianBlurPostProcessing(5), 
-            new DilationPostProcessing(4), 
-            new ClosingPostProcessing(4)
+            new DilationPostProcessing(3), 
+            new ClosingPostProcessing(1),
+            new GaussianBlurPostProcessing(1), 
+
             }
         )
     );
