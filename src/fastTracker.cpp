@@ -2,22 +2,28 @@
 #include "handTracker.h"
 #include "removeFace.h"
 #include "backgroundSubtraction.h"
+#include "kCurvature.h"
 #include <opencv2/opencv.hpp>
 #include <opencv2/bgsegm.hpp>
 #define MAX_DIST 30
 #define INTERVAL 20 // interval for definiting the skin color range givne an image of the palm
-#define ST_DEVS_DIFF 3 // number of standard deviations to consider for the range
-#define PALM_IMAGE_PATH "data/palm_248_light.png"
+#define ST_DEVS_DIFF 5 // number of standard deviations to consider for the range
+#define PALM_IMAGE_PATH "data/palm_442pm.png"
 #define BLUR_SIZE 10
 #define MIN_SOLIDITY 0.5
 #define MAX_SOLIDITY 0.8
 #define MIN_PROP 0.01 // minimum proportion of the image that the hand contour can take up to be considered valid
 #define MAX_PROP 0.3 // maximum proportion of the image that the hand contour can take up to be considered valid
 #define COLOR_CONVERSION cv::COLOR_BGR2YCrCb
+#define MIN_CURVATURE 10 // min angle between hull vectors to be considered a fingertip
+#define MAX_CURVATURE 60 // max angle between hull vectors to be considered a fingertip
+#define DEBUG true
 struct colorRange{
     cv::Scalar lower;
     cv::Scalar upper;
 };
+
+
 void printMat(const cv::Mat& mat) {
     for (int i = 0; i < mat.rows; i++) {
         for (int j = 0; j < mat.cols; j++) {
@@ -155,7 +161,7 @@ class CompositeFilter : public ContourFilterStrategy{
 
 class HandMaskPostProcessingStrategy{
     public:
-        virtual cv::Mat postProcess(const cv::Mat& mask) = 0;
+        virtual cv::Mat postProcess(cv::Mat& mask) = 0;
 };
 
 class GaussianBlurPostProcessing : public HandMaskPostProcessingStrategy{
@@ -166,7 +172,7 @@ class GaussianBlurPostProcessing : public HandMaskPostProcessingStrategy{
             this->blurSize = blurSize;
         }
         
-        cv::Mat postProcess(const cv::Mat& mask){
+        cv::Mat postProcess(cv::Mat& mask){
             cv::GaussianBlur(mask, mask, cv::Size(blurSize, blurSize), 0); 
             return mask;
         }
@@ -180,7 +186,7 @@ class DilationPostProcessing : public HandMaskPostProcessingStrategy{
             this->dilationIterations = dilationIterations;
         }
         
-        cv::Mat postProcess(const cv::Mat& mask){
+        cv::Mat postProcess(cv::Mat& mask){
             cv::dilate(mask, mask, cv::Mat(), cv::Point(-1, -1), dilationIterations); 
             return mask;
         }
@@ -194,7 +200,7 @@ class ClosingPostProcessing : public HandMaskPostProcessingStrategy{
             this->closingIterations = closingIterations;
         }
         
-        cv::Mat postProcess(const cv::Mat& mask){
+        cv::Mat postProcess(cv::Mat& mask){
             cv::morphologyEx(mask, mask, cv::MORPH_CLOSE, cv::Mat(), cv::Point(-1, -1), closingIterations); 
             return mask;
         }
@@ -208,7 +214,7 @@ class OpeningPostProcessing: public HandMaskPostProcessingStrategy{
             this->openingIterations = openingIterations;
         }
         
-        cv::Mat postProcess(const cv::Mat& mask){
+        cv::Mat postProcess(cv::Mat& mask){
             cv::morphologyEx(mask, mask, cv::MORPH_OPEN, cv::Mat(), cv::Point(-1, -1), openingIterations); 
             return mask;
         }
@@ -223,15 +229,27 @@ class CompositePostProcessing : public HandMaskPostProcessingStrategy{
             this->postProcessingStrategies = postProcessingStrategies;
         }
         
-        cv::Mat postProcess(const cv::Mat& mask){
-            cv::Mat processedMask = mask;
+        cv::Mat postProcess(cv::Mat& mask){
             for (auto strategy : postProcessingStrategies){
-                processedMask = strategy->postProcess(processedMask);
+                mask = strategy->postProcess(mask);
             }
-            return processedMask;
+            return mask;
         }
 };
 
+class ErosionPostProcessing : public HandMaskPostProcessingStrategy{
+    private:
+        int erosionIterations;
+    public:
+        ErosionPostProcessing(int erosionIterations = 4){
+            this->erosionIterations = erosionIterations;
+        }
+        
+        cv::Mat postProcess(cv::Mat& mask){
+            cv::erode(mask, mask, cv::Mat(), cv::Point(-1, -1), erosionIterations); 
+            return mask;
+        }
+};
 // gets binary mask of the hand
 class HandMaskStrategy{
     private: 
@@ -252,8 +270,9 @@ class HandMaskStrategy{
             cv::Mat rangeMask;
 
             cv::inRange(img, range.lower, range.upper, rangeMask);
-
+            if (DEBUG){
             cv::imshow("Raw Mask", rangeMask);
+            }
 
             return postProcessingStrategy->postProcess(rangeMask);;
         };
@@ -362,6 +381,40 @@ std::vector<int> getRoughHull(const std::vector<cv::Point>& contour, double maxD
     return result;
 }
 
+/**
+ * Gets the keypoints of the fingertips of the hand usingConvex Hull and K-curvature
+ */
+std::vector<cv::Point> getFingertipPoints(const std::vector<cv::Point>& contour, const cv::Mat& img = cv::Mat()) {
+
+    std::vector<int> fingertipIndices = getRoughHull(contour, MAX_DIST);
+    std::vector<KCurvatureData> kCurvatures = getKCurvatureData(contour, fingertipIndices);
+    
+    if (DEBUG){
+        cv::Mat KCurvatureImage = img.clone();
+        for (KCurvatureData kCurvature : kCurvatures){
+            cv::line(KCurvatureImage, kCurvature.start, kCurvature.point, cv::Scalar(0, 255, 0), 2);
+            cv::line(KCurvatureImage, kCurvature.end, kCurvature.point, cv::Scalar(0, 255, 0), 2);
+        }
+        cv::imshow("K Curvature", KCurvatureImage);
+    }
+
+    std::vector<cv::Point> fingertipPoints;
+
+    for (KCurvatureData kCurvature : kCurvatures){
+        double angle = kCurvature.getKCurvature();
+        if (angle > MIN_CURVATURE && angle < MAX_CURVATURE){
+            fingertipPoints.push_back(kCurvature.point);
+        }
+    }
+
+    if (DEBUG){
+        cv::Mat fingertipImage = img.clone();
+        drawKeypoints(fingertipImage, fingertipPoints);
+        cv::imshow("Fingertips", fingertipImage);
+    }
+
+    return fingertipPoints;
+}
 
 // Gets the keypoints of the fingertips of the hand using Contour Detection and Convex Hull
 class FastTracker : public HandTracker {
@@ -379,7 +432,6 @@ class FastTracker : public HandTracker {
             static cv::Mat background = initBackground();
 
             cv::Mat foreground = backgroundSubtraction(background,(image));
-            cv::imshow("Foreground", foreground);
             cv::Mat handMask = maskStrategy->makeHandMask(foreground);
             
             std::vector<std::vector<cv::Point>> contours;
@@ -389,15 +441,14 @@ class FastTracker : public HandTracker {
             // draw the contour
             cv::Mat contourImage = cv::Mat::zeros(handMask.size(), CV_8UC3);
             cv::drawContours(contourImage, std::vector<std::vector<cv::Point>>{contour}, -1, cv::Scalar(0, 255, 0), 2);
-            cv::imshow("Contour", contourImage);
 
-            std::vector<int> fingertipIndices = getRoughHull(contour, MAX_DIST);
-            std::vector<cv::Point> fingertipPoints = {};
-            for (int idx : fingertipIndices) {
-                fingertipPoints.push_back(contour[idx]);
+            std::vector<cv::Point> fingertipPoints = getFingertipPoints(contour, image);
+            if (DEBUG){
+                cv::imshow("Foreground", foreground);
+                cv::imshow("Contour", contourImage);
+                cv::imshow("Hand Mask", handMask);
             }
-            cv::imshow("Hand Mask", handMask);
-            
+
             int numFingersRaised = static_cast<int>(fingertipPoints.size());
             // TODO: standardize the shape of the output to handle things that may retuirn more or less than all the hand keypoints
             return HandData{numFingersRaised > 0 ? fingertipPoints[0] : cv::Point(-1,-1),numFingersRaised,numFingersRaised > 0};
@@ -411,9 +462,9 @@ int main(){
         new CompositePostProcessing(
             {
             new DilationPostProcessing(3), 
-            new ClosingPostProcessing(1),
+            new ErosionPostProcessing(10),
+            new DilationPostProcessing(8),
             new GaussianBlurPostProcessing(1), 
-
             }
         )
     );
