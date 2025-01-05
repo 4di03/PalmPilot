@@ -23,7 +23,7 @@ add_executable(fast_tracking src/fastTracker.cpp src/cam.h src/handTracking.cpp 
 add_executable(background_sub src/backgroundSubtraction.cpp )
 add_executable(openpose src/openposeSample.cpp)
 add_executable(check_metal src/metalTest.cpp)
-add_executable(calibration src/calibration.cpp src/cam.h)
+add_executable(calibration src/runCalibration.cpp src/calibration.cpp)
 
 # Link macOS frameworks
 target_link_libraries(mouseControl PRIVATE "-framework CoreGraphics" "-framework CoreFoundation")

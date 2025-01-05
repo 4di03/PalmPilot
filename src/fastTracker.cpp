@@ -3,12 +3,13 @@
 #include "removeFace.h"
 #include "backgroundSubtraction.h"
 #include "kCurvature.h"
+#include "calibration.h"
 #include <opencv2/opencv.hpp>
 #include <opencv2/bgsegm.hpp>
 #define MAX_DIST 30
 #define INTERVAL 20 // interval for definiting the skin color range givne an image of the palm
 #define ST_DEVS_DIFF 5 // number of standard deviations to consider for the range
-#define PALM_IMAGE_PATH "data/palm_442pm.png"
+#define COLOR_RANGE_FILE "data/color_range.yaml"
 #define BLUR_SIZE 10
 #define MIN_SOLIDITY 0.5
 #define MAX_SOLIDITY 0.8
@@ -261,7 +262,7 @@ class HandMaskStrategy{
         }
        
        cv::Mat makeHandMask(const cv::Mat& image){
-            static colorRange range = getRangeFromImage(PALM_IMAGE_PATH);
+            static colorRange range = parseColorRange(COLOR_RANGE_FILE);
 
             // Filter by skin color
             cv::Mat img;
