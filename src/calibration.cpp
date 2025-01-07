@@ -141,7 +141,7 @@ void calibrateColorRange() {
         cv::Mat image;
         cv::cvtColor(stream.getFrame(), image, COLOR_CONVERSION);
 
-        // get average YCrCb values of the box
+        // get average YCrCb values ƒof the box
         cv::Mat roi = image(cv::Rect(calibration_rect_tl_x, calibration_rect_tl_y, SIZE, SIZE));
         cv::Scalar avg = cv::mean(roi);
         cv::putText(image, "Avg Y: " + std::to_string(avg[0]), cv::Point(10, 20), cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);

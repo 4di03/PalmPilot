@@ -3,8 +3,8 @@
 #include "handTracking.h"
 #include <chrono>
 #include <opencv2/core/ocl.hpp>
+#include "constants.h"
 #define INTERP_INTERVAL 10 // extracts the keypoints every 10 frames
-
 /**
  * Draws the keypoints on the image
  * @param image the image to draw the keypoints on
@@ -104,8 +104,13 @@ void runHandTracking(HandTracker* tracker){
     {
     VideoStream stream(0);
     int ct = 0;
+    // record start time
+    auto firstStart = std::chrono::high_resolution_clock::now();
+
+    int frameCount = 0;
     while (true) {
         ct++;
+        frameCount++;
         cv::Mat frame = stream.getFrame();
         cv::resize(frame, frame, cv::Size(FRAME_WIDTH, FRAME_HEIGHT));  
 
@@ -123,19 +128,37 @@ void runHandTracking(HandTracker* tracker){
             auto end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double, std::milli> elapsed = end - start;
 
+            if (DEBUG){
+                std::cout << "getHandData Execution time: " << elapsed.count() << " ms\n";
+            }
 
             ct = 0; // reset the counter to avoid overflow
         }
 
+    
+
         // if the keypoints are found, draw them on the image, else use the previous keypoints
         // auto start = std::chrono::high_resolution_clock::now();
+        if (DEBUG){
         displayHandData(frame,handData);
+        }
         // auto end = std::chrono::high_resolution_clock::now();
         // std::chrono::duration<double, std::milli> elapsed = end - start;
         // std::cout << "drawKeypoints Execution time: " << elapsed.count() << " ms\n";
 
 
         cv::imshow("Webcam Stream with hands", frame);
+
+        // print the frame rate every 100 frames
+        if (frameCount % 100 == 0){
+            auto end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double, std::milli> elapsed = end - firstStart;
+
+            std::cout << "Frame Rate: " << 1000*frameCount/elapsed.count() << " fps" << std::endl;
+            firstStart = std::chrono::high_resolution_clock::now();
+            frameCount = 0;
+        }
+
         // Exit the loop when 'q' is pressed
         if (cv::waitKey(1) == 'q') {
             break;

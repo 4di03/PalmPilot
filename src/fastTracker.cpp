@@ -2,8 +2,11 @@
 #include "handTracker.h"
 #include "removeFace.h"
 #include "backgroundSubtraction.h"
-#include "kCurvature.h"
 #include "calibration.h"
+#include "constants.h"
+#include "math/kCurvature.h"
+#include "math/convexityDefects.h"
+#include "math/maxInscribingCircle.h"
 #include <opencv2/opencv.hpp>
 #include <opencv2/bgsegm.hpp>
 #define MAX_DIST 30
@@ -18,7 +21,6 @@
 #define COLOR_CONVERSION cv::COLOR_BGR2YCrCb
 #define MIN_CURVATURE 10 // min angle between hull vectors to be considered a fingertip
 #define MAX_CURVATURE 60 // max angle between hull vectors to be considered a fingertip
-#define DEBUG true
 
 
 void printMat(const cv::Mat& mat) {
@@ -277,7 +279,9 @@ class HandMaskStrategy{
 
 
  
-
+double dist(cv::Point a, cv::Point b){
+    return cv::norm(a-b);
+}
 
 /**
  * Applies a binary mask to an image.
@@ -379,11 +383,50 @@ std::vector<int> getRoughHull(const std::vector<cv::Point>& contour, double maxD
 }
 
 /**
- * Gets the keypoints of the fingertips of the hand usingConvex Hull and K-curvature
+ * Gets the position of the index finger form the convexity defects on the convex hull of the hand by . . .
+ *  1. filter out convexity defects with depth smaller than the radius of the max inscribing circle (If no valid fingers are found, return (-1, -1))
+ *  2. get the convexity defect with the largest area
+ *  3. designate the taller of the two points of the defect as the index finger position (because thumb is smaller). Height is the distance from the furthest point to the start or end point of the defect
+ * 
  */
-std::vector<cv::Point> getFingertipPoints(const std::vector<cv::Point>& contour, const cv::Mat& img = cv::Mat()) {
+cv::Point getIndexFingerPosition(std::vector<ConvexityDefect> convexityDefects, Circle maxInscribingCircle){
+    // filter out convexity defects with depth smaller than the radius of the max inscribing circle
+    convexityDefects.erase(std::remove_if(convexityDefects.begin(), convexityDefects.end(),
+    [&](const ConvexityDefect& cd) {
+        return cd.depth < maxInscribingCircle.radius;
+    }), convexityDefects.end());
+
+    if (convexityDefects.empty()) {
+        // means no valid fingers were found
+        return cv::Point(-1, -1);
+    }
+
+    // get the convexity defect with the largest area
+
+    ConvexityDefect maxDefect = *std::max_element(convexityDefects.begin(), convexityDefects.end(),
+    [](const ConvexityDefect& cd1, const ConvexityDefect& cd2) {
+        return cd1.getArea() < cd2.getArea();
+    });
+
+    cv::Point indexFingerPosition;
+    if (dist(maxDefect.start, maxDefect.furthestPoint) > dist(maxDefect.end, maxDefect.furthestPoint)){
+        indexFingerPosition = maxDefect.start;
+    } else {
+        indexFingerPosition = maxDefect.end;
+    }
+    return indexFingerPosition;
+}
+
+/**
+ * Gets Hand Data from the contour
+ */
+HandData getHandDataFromContour(const std::vector<cv::Point>& contour, const cv::Mat& img = cv::Mat()) {
 
     std::vector<int> fingertipIndices = getRoughHull(contour, MAX_DIST);
+
+    if(fingertipIndices.size() == 0){
+        return  HandData{cv::Point(-1,-1),0,false};
+    }
     std::vector<KCurvatureData> kCurvatures = getKCurvatureData(contour, fingertipIndices);
     
     if (DEBUG){
@@ -410,7 +453,12 @@ std::vector<cv::Point> getFingertipPoints(const std::vector<cv::Point>& contour,
         cv::imshow("Fingertips", fingertipImage);
     }
 
-    return fingertipPoints;
+    Circle maxInscribingCircle = getMaxInscribingCircle(contour, img);
+    std::vector<ConvexityDefect> convexityDefects = getConvexityDefects(contour, fingertipIndices);
+    cv::Point indexFingerPosition = getIndexFingerPosition(convexityDefects, maxInscribingCircle);
+
+
+    return HandData{indexFingerPosition, static_cast<int>(fingertipPoints.size()), true};
 }
 
 // Gets the keypoints of the fingertips of the hand using Contour Detection and Convex Hull
@@ -435,20 +483,17 @@ class FastTracker : public HandTracker {
             cv::findContours(handMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
             std::vector<cv::Point> contour = filterStrategy->filterContour(contours);
             
-            // draw the contour
-            cv::Mat contourImage = cv::Mat::zeros(handMask.size(), CV_8UC3);
-            cv::drawContours(contourImage, std::vector<std::vector<cv::Point>>{contour}, -1, cv::Scalar(0, 255, 0), 2);
-
-            std::vector<cv::Point> fingertipPoints = getFingertipPoints(contour, image);
             if (DEBUG){
+                // draw the contour
+                cv::Mat contourImage = cv::Mat::zeros(handMask.size(), CV_8UC3);
+                cv::drawContours(contourImage, std::vector<std::vector<cv::Point>>{contour}, -1, cv::Scalar(0, 255, 0), 2);
+
                 cv::imshow("Foreground", foreground);
                 cv::imshow("Contour", contourImage);
                 cv::imshow("Hand Mask", handMask);
             }
 
-            int numFingersRaised = static_cast<int>(fingertipPoints.size());
-            // TODO: standardize the shape of the output to handle things that may retuirn more or less than all the hand keypoints
-            return HandData{numFingersRaised > 0 ? fingertipPoints[0] : cv::Point(-1,-1),numFingersRaised,numFingersRaised > 0};
+            return getHandDataFromContour(contour, image);
         }
 };
 
