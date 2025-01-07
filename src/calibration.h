@@ -11,7 +11,7 @@ struct colorRange {
     }
 };
 
-colorRange parseColorRange(const std::string& path);
+colorRange parseColorRange(std::string path);
 void calibrateColorRange();
 
 void setBackground();

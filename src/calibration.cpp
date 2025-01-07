@@ -43,7 +43,7 @@ std::vector<std::string> split(const std::string& str, const std::string& delimi
 
 
 // Parses the color range from a file
-colorRange parseColorRange(const std::string& path) {
+colorRange parseColorRange( std::string path) {
     std::ifstream file(path);
     if (!file.is_open()) {
         std::cerr << "Error: Could not open file to read color range." << std::endl;
@@ -124,12 +124,12 @@ void calibrateColorRange() {
     int c3Min = 0, c3Max = 255;
 
     // Create trackbars
-    cv::createTrackbar("Channel 1 Min", windowName, &c1Min, 255, on_trackbar);
-    cv::createTrackbar("Channel 1 Max", windowName, &c1Max, 255, on_trackbar);
-    cv::createTrackbar("Channel 2 Min", windowName, &c2Min, 255, on_trackbar);
-    cv::createTrackbar("Channel 2 Max", windowName, &c2Max, 255, on_trackbar);
-    cv::createTrackbar("Channel 3 Min", windowName, &c3Min, 255, on_trackbar);
-    cv::createTrackbar("Channel 3 Max", windowName, &c3Max, 255, on_trackbar);
+    cv::createTrackbar("C1 Min", windowName, &c1Min, 255, on_trackbar);
+    cv::createTrackbar("C1 Max", windowName, &c1Max, 255, on_trackbar);
+    cv::createTrackbar("C2 Min", windowName, &c2Min, 255, on_trackbar);
+    cv::createTrackbar("C2 Max", windowName, &c2Max, 255, on_trackbar);
+    cv::createTrackbar("C3 Min", windowName, &c3Min, 255, on_trackbar);
+    cv::createTrackbar("C3 Max", windowName, &c3Max, 255, on_trackbar);
 
     std::cout << "Please slide the trackbars to set the optimal color range for hand segmentation. Don't worry if elements in the background also appear in the segmenetaiton, those will be removed by the background subtraction. Make sure the hand is as white as possible." << std::endl;
     std::cout << "You are calibrating in the " << COLOR_CONVERSION << " color space." << std::endl;

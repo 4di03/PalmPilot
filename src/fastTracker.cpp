@@ -19,16 +19,12 @@
 #define MIN_CURVATURE 10 // min angle between hull vectors to be considered a fingertip
 #define MAX_CURVATURE 60 // max angle between hull vectors to be considered a fingertip
 #define DEBUG true
-struct colorRange{
-    cv::Scalar lower;
-    cv::Scalar upper;
-};
 
 
 void printMat(const cv::Mat& mat) {
     for (int i = 0; i < mat.rows; i++) {
         for (int j = 0; j < mat.cols; j++) {
-            // For single-channel matrices
+            // For singlfe-channel matrices
             if (mat.channels() == 1) {
                 std::cout << mat.at<uchar>(i, j) << " ";
             }
@@ -275,7 +271,7 @@ class HandMaskStrategy{
             cv::imshow("Raw Mask", rangeMask);
             }
 
-            return postProcessingStrategy->postProcess(rangeMask);;
+            return postProcessingStrategy->postProcess(rangeMask);
         };
 };
 
