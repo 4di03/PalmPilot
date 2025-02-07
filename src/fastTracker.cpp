@@ -15,13 +15,33 @@
 #define COLOR_RANGE_FILE "data/color_range.yaml"
 #define BLUR_SIZE 10
 #define MIN_SOLIDITY 0.5
-#define MAX_SOLIDITY 0.8
+#define MAX_SOLIDITY 0.7
 #define MIN_PROP 0.01 // minimum proportion of the image that the hand contour can take up to be considered valid
 #define MAX_PROP 0.3 // maximum proportion of the image that the hand contour can take up to be considered valid
 #define COLOR_CONVERSION cv::COLOR_BGR2YCrCb
-#define MIN_CURVATURE 10 // min angle between hull vectors to be considered a fingertip
-#define MAX_CURVATURE 60 // max angle between hull vectors to be considered a fingertip
+#define MIN_CURVATURE 5 // min angle between hull vectors to be considered a fingertip
+#define MAX_CURVATURE 45 // max angle between hull vectors to be considered a fingertip
+#define CIRCULARITY_THRESHOLD 0.85
 
+/**
+ * Computes the circularity of a contour by comparing the area and perimeter of its convex hull
+ */
+float getConvexHullCircularity(const std::vector<cv::Point>& contour) {
+
+    // Compute Convex Hull
+    std::vector<cv::Point> hull;
+    cv::convexHull(contour, hull);
+
+    // Compute Area and Perimeter of the Convex Hull
+    double hullArea = cv::contourArea(hull);
+    double hullPerimeter = cv::arcLength(hull, true);
+
+    // Compute Circularity: 4π * Area / Perimeter²
+    if (hullPerimeter == 0) return false; // Prevent division by zero
+    return (4 * CV_PI * hullArea) / (hullPerimeter * hullPerimeter);
+
+
+}
 
 void printMat(const cv::Mat& mat) {
     for (int i = 0; i < mat.rows; i++) {
@@ -83,6 +103,10 @@ class MaxAreaFilter : public ContourFilterStrategy{
             [](const std::vector<cv::Point>& c0, const std::vector<cv::Point>& c1) {
                 return cv::contourArea(c0) < cv::contourArea(c1);
             }));
+
+
+            // print the circularity of the contour
+
             return maxContour;
         }
 };
@@ -123,7 +147,6 @@ class AreaFilter : public ValidContourStrategy{
             double imageArea = FRAME_WIDTH * FRAME_HEIGHT;
             for (auto contour : contours){
                 double prop = cv::contourArea(contour) / imageArea;
-            
                 if (prop > MIN_PROP && prop < MAX_PROP){
 
                     validContours.push_back(contour);
@@ -132,6 +155,30 @@ class AreaFilter : public ValidContourStrategy{
             return validContours;
         }
 
+};
+
+
+/**
+ * Filters out contours for which he convex hull is too circular
+ */
+class CircularityFilter : public ValidContourStrategy{
+    public:
+        std::vector<std::vector<cv::Point>> getValidContours(std::vector<std::vector<cv::Point>> contours){
+            if (contours.empty()) {
+                return std::vector<std::vector<cv::Point>>();
+            }
+            // Sort contours by area in descending order and return the largest one
+
+            std::vector<std::vector<cv::Point>> validContours;
+            for (auto contour : contours){
+                float circularity = getConvexHullCircularity(contour);
+                if (circularity < CIRCULARITY_THRESHOLD){
+                    validContours.push_back(contour);
+                }
+            }
+            
+            return validContours;
+        }
 };
 
 class CompositeFilter : public ContourFilterStrategy{
@@ -148,7 +195,7 @@ class CompositeFilter : public ContourFilterStrategy{
             // Apply each filter in sequence until a valid contour is found
             for (auto filter : validFilters){
                 validContours = filter->getValidContours(validContours);
-                if (!validContours.empty()){
+                if (validContours.empty()){ // no need to apply more filters if no valid contours are found
                     break;
                 }
             }
@@ -452,7 +499,6 @@ HandData getHandDataFromContour(const std::vector<cv::Point>& contour, const cv:
     std::vector<KCurvatureData> kCurvatures = getKCurvatureData(contour, fingertipIndices);
     
     if (DEBUG){
-        std::cout << "Found " << kCurvatures.size() << " K Curvatures" << std::endl;
         cv::Mat KCurvatureImage = img.clone();
         for (KCurvatureData kCurvature : kCurvatures){
             cv::line(KCurvatureImage, kCurvature.start, kCurvature.point, cv::Scalar(0, 255, 0), 2);
@@ -484,7 +530,6 @@ HandData getHandDataFromContour(const std::vector<cv::Point>& contour, const cv:
 
     cv::Point indexFingerPosition = getIndexFingerPosition(convexityDefects, maxInscribingCircle);
 
-    printf("L487 Index Finger Position: %d, %d\n", indexFingerPosition.x, indexFingerPosition.y);
 
     return HandData{indexFingerPosition, static_cast<int>(fingertipPoints.size()), true};
 }
@@ -519,7 +564,11 @@ class FastTracker : public HandTracker {
                 cv::drawContours(contourImage, std::vector<std::vector<cv::Point>>{contour}, -1, cv::Scalar(0, 255, 0), 2);
 
                 cv::imshow("Foreground", foreground);
+
+
                 cv::imshow("Contour", contourImage);
+
+
                 cv::imshow("Hand Mask", handMask);
             }
 
@@ -537,7 +586,7 @@ int main(){
             }
         )
     );
-    ContourFilterStrategy* filter = new CompositeFilter({new AreaFilter(),new SolidityFilter()}, new MaxAreaFilter());
+    ContourFilterStrategy* filter = new CompositeFilter({new AreaFilter(), new SolidityFilter(),  new CircularityFilter()}, new MaxAreaFilter());
     HandTracker* tracker = new FastTracker(filter, maskStrategy);
 
     runHandTracking(tracker);

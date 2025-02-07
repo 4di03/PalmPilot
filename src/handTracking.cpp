@@ -30,14 +30,17 @@ void drawKeypoints(cv::Mat& img, std::vector<cv::Point>& keypoints){
  * @param handData handData info to print/display
  */
 void displayHandData(cv::Mat& img, HandData& handData){
-    std::cout << "Hand Found: "<< handData.handDetected << std::endl;
-    std::cout << "Index Finger Position: " << handData.indexFingerPosition << std::endl;
-    std::cout << "Number Fingers Raised: " << handData.numFingersRaised << std::endl;
+    // draw the index finger position
     circle(img, handData.indexFingerPosition, 3, cv::Scalar(0, 200, 0), -1);
+    // write the number of fingers raised on screen
+    cv::putText(img, std::to_string(handData.numFingersRaised), cv::Point(10, 50), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 200, 0), 2);
+
+    // write the boolean value of the hand being raised
+    cv::putText(img, handData.handDetected ? "True" : "False", cv::Point(10, 100), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 200, 0), 2);
 }
 // runs hand tracker on vide stream and draws keypoints 
 void plotHandKeypoints(HandKeypointTracker* tracker){
-
+    std::cout << "Running plotHandKeypoints" << std::endl;
     if (cv::ocl::haveOpenCL()) {
         std::cout << "OpenCL is available!" << std::endl;
         cv::ocl::setUseOpenCL(true);
@@ -144,9 +147,9 @@ void runHandTracking(HandTracker* tracker){
 
         // if the keypoints are found, draw them on the image, else use the previous keypoints
         // auto start = std::chrono::high_resolution_clock::now();
-        if (DEBUG){
+        //if (DEBUG){
         displayHandData(frame,handData);
-        }
+        //}
         // auto end = std::chrono::high_resolution_clock::now();
         // std::chrono::duration<double, std::milli> elapsed = end - start;
         // std::cout << "drawKeypoints Execution time: " << elapsed.count() << " ms\n";
