@@ -33,7 +33,7 @@ void displayHandData(cv::Mat& img, HandData& handData){
     std::cout << "Hand Found: "<< handData.handDetected << std::endl;
     std::cout << "Index Finger Position: " << handData.indexFingerPosition << std::endl;
     std::cout << "Number Fingers Raised: " << handData.numFingersRaised << std::endl;
-    circle(img, handData.indexFingerPosition, 3, cv::Scalar(0,0,200), -1);
+    circle(img, handData.indexFingerPosition, 3, cv::Scalar(0, 200, 0), -1);
 }
 // runs hand tracker on vide stream and draws keypoints 
 void plotHandKeypoints(HandKeypointTracker* tracker){

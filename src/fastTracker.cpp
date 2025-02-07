@@ -400,6 +400,9 @@ std::vector<int> getRoughHull(const std::vector<cv::Point>& contour, double maxD
 }
 
 /**
+ * TODO: test this thoroghly, I'm not confident it works yet!!
+ * 
+ * 
  * Gets the position of the index finger form the convexity defects on the convex hull of the hand by . . .
  *  1. filter out convexity defects with depth smaller than the radius of the max inscribing circle (If no valid fingers are found, return (-1, -1))
  *  2. get the convexity defect with the largest area
@@ -426,7 +429,7 @@ cv::Point getIndexFingerPosition(std::vector<ConvexityDefect> convexityDefects, 
     });
 
     cv::Point indexFingerPosition;
-    if (dist(maxDefect.start, maxDefect.furthestPoint) > dist(maxDefect.end, maxDefect.furthestPoint)){
+    if (dist(maxDefect.start, maxDefect.furthestPoint) > dist(maxDefect.end, maxDefect.furthestPoint)){ // index finger is the one that is furthest  from defect
         indexFingerPosition = maxDefect.start;
     } else {
         indexFingerPosition = maxDefect.end;
@@ -475,15 +478,13 @@ HandData getHandDataFromContour(const std::vector<cv::Point>& contour, const cv:
 
 
     Circle maxInscribingCircle = getMaxInscribingCircle(contour, img);
-    std::cout << "L461" << std::endl;
 
     std::vector<ConvexityDefect> convexityDefects = getConvexityDefects(contour, fingertipIndices);
     
-    std::cout << "L462" << std::endl;
 
     cv::Point indexFingerPosition = getIndexFingerPosition(convexityDefects, maxInscribingCircle);
 
-    std::cout << "L463" << std::endl;
+    printf("L487 Index Finger Position: %d, %d\n", indexFingerPosition.x, indexFingerPosition.y);
 
     return HandData{indexFingerPosition, static_cast<int>(fingertipPoints.size()), true};
 }
