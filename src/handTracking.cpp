@@ -51,6 +51,11 @@ void plotHandKeypoints(HandKeypointTracker* tracker){
     while (true) {
         ct++;
         cv::Mat frame = stream.getFrame();
+
+        if (frame.empty()) {
+            std::cerr << "Error: Failed to capture frame." << std::endl;
+            break;
+        }
         cv::resize(frame, frame, cv::Size(FRAME_WIDTH, FRAME_HEIGHT));
 
         // Check if the frame is empty

@@ -2,9 +2,14 @@
 
 
 Circle getMaxInscribingCircle(const std::vector<cv::Point>& contour, const cv::Mat& img) {
+    if (contour.empty()) {
+        throw std::runtime_error("Contour is empty");
+    }
 
     cv::Mat filledContour = cv::Mat::zeros(img.size(), CV_8UC1);
-    cv::drawContours(filledContour, {contour}, 0, cv::Scalar(255), cv::FILLED);
+
+    
+    cv::drawContours(filledContour, std::vector<std::vector<cv::Point>>{contour}, 0, cv::Scalar(255), cv::FILLED); 
 
     // Get the min distance to a 0 pixel for each point in the filled contour
     cv::Mat distanceTransform;

@@ -8,6 +8,7 @@
 #define TL_Y 300
 #define SIZE 20
 #define COLOR_CONVERSION cv::COLOR_BGR2YCrCb
+#define COLOR_RANGE_FILE "/Users/adithyapalle/work/PalmPilot/data/color_range.yaml"
 
 
 int calibration_rect_tl_x = TL_X;
@@ -118,10 +119,33 @@ void calibrateColorRange() {
     // Set mouse callback for the calibration window
     cv::setMouseCallback(originalWindow, onMouse);
 
-    // Variables for YCrCb range
+
+
     int c1Min = 0, c1Max = 255;
     int c2Min = 0, c2Max = 255;
     int c3Min = 0, c3Max = 255;
+
+    // check if color range file exists
+    std::ifstream colorRangeFile(COLOR_RANGE_FILE);
+    if (colorRangeFile.is_open()) {
+        std::cout << "Color range file found. Loading previous color range." << std::endl;
+        colorRangeFile.close();
+        colorRange previousRange = parseColorRange(COLOR_RANGE_FILE);
+
+        std::cout << "Setting previous color range: " << std::endl;
+
+        // Variables for YCrCb range
+        c1Min = previousRange.lower[0];
+        c1Max = previousRange.upper[0];
+        c2Min = previousRange.lower[1];
+        c2Max = previousRange.upper[1];
+        c3Min = previousRange.lower[2];
+        c3Max = previousRange.upper[2];
+
+    } 
+
+
+    // update variables to range
 
     // Create trackbars
     cv::createTrackbar("C1 Min", windowName, &c1Min, 255, on_trackbar);

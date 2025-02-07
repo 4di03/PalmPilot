@@ -180,13 +180,16 @@ class GaussianBlurPostProcessing : public HandMaskPostProcessingStrategy{
 class DilationPostProcessing : public HandMaskPostProcessingStrategy{
     private:
         int dilationIterations;
+        cv::Mat kernel;
     public:
-        DilationPostProcessing(int dilationIterations = 4){
+        DilationPostProcessing(int dilationIterations = 4, int kernelSize = 5){
             this->dilationIterations = dilationIterations;
+            this->kernel = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(kernelSize, kernelSize));
+
         }
         
         cv::Mat postProcess(cv::Mat& mask){
-            cv::dilate(mask, mask, cv::Mat(), cv::Point(-1, -1), dilationIterations); 
+            cv::dilate(mask, mask, this->kernel, cv::Point(-1, -1), dilationIterations); 
             return mask;
         }
 };
@@ -194,13 +197,15 @@ class DilationPostProcessing : public HandMaskPostProcessingStrategy{
 class ClosingPostProcessing : public HandMaskPostProcessingStrategy{
     private:
         int closingIterations;
+        cv::Mat kernel;
     public:
-        ClosingPostProcessing(int closingIterations = 4){
+        ClosingPostProcessing(int closingIterations = 4, int kernelSize = 5){
             this->closingIterations = closingIterations;
-        }
+            this->kernel = cv::getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(kernelSize, kernelSize));
+        }           
         
         cv::Mat postProcess(cv::Mat& mask){
-            cv::morphologyEx(mask, mask, cv::MORPH_CLOSE, cv::Mat(), cv::Point(-1, -1), closingIterations); 
+            cv::morphologyEx(mask, mask, cv::MORPH_CLOSE, this->kernel, cv::Point(-1, -1), closingIterations); 
             return mask;
         }
 };
@@ -249,6 +254,15 @@ class ErosionPostProcessing : public HandMaskPostProcessingStrategy{
             return mask;
         }
 };
+
+// does not apply any post processing
+class IdentityPostProcessing : public HandMaskPostProcessingStrategy{
+    public:
+        cv::Mat postProcess(cv::Mat& mask){
+            return mask;
+        }
+};
+
 // gets binary mask of the hand
 class HandMaskStrategy{
     private: 
@@ -330,7 +344,7 @@ cv::Point getCenterPt(const std::vector<cv::Point>& points) {
 }
 
 // Function to get the rough hull
-// Returns the contour indices for the most central points
+// Returns the contour indices for the most central points, sorted in ascending order
 std::vector<int> getRoughHull(const std::vector<cv::Point>& contour, double maxDist) {
     
     // Get hull indices and hull points
@@ -379,6 +393,9 @@ std::vector<int> getRoughHull(const std::vector<cv::Point>& contour, double maxD
         result.push_back(getMostCentralPoint(pointGroup.second).second);
     }
 
+    // sort the indices in ascending order
+    std::sort(result.begin(), result.end());
+
     return result;
 }
 
@@ -421,15 +438,18 @@ cv::Point getIndexFingerPosition(std::vector<ConvexityDefect> convexityDefects, 
  * Gets Hand Data from the contour
  */
 HandData getHandDataFromContour(const std::vector<cv::Point>& contour, const cv::Mat& img = cv::Mat()) {
+    if (contour.size() == 0){
+        return HandData{cv::Point(-1,-1),0,false};
+    }
 
     std::vector<int> fingertipIndices = getRoughHull(contour, MAX_DIST);
-
     if(fingertipIndices.size() == 0){
         return  HandData{cv::Point(-1,-1),0,false};
     }
     std::vector<KCurvatureData> kCurvatures = getKCurvatureData(contour, fingertipIndices);
     
     if (DEBUG){
+        std::cout << "Found " << kCurvatures.size() << " K Curvatures" << std::endl;
         cv::Mat KCurvatureImage = img.clone();
         for (KCurvatureData kCurvature : kCurvatures){
             cv::line(KCurvatureImage, kCurvature.start, kCurvature.point, cv::Scalar(0, 255, 0), 2);
@@ -453,10 +473,17 @@ HandData getHandDataFromContour(const std::vector<cv::Point>& contour, const cv:
         cv::imshow("Fingertips", fingertipImage);
     }
 
+
     Circle maxInscribingCircle = getMaxInscribingCircle(contour, img);
+    std::cout << "L461" << std::endl;
+
     std::vector<ConvexityDefect> convexityDefects = getConvexityDefects(contour, fingertipIndices);
+    
+    std::cout << "L462" << std::endl;
+
     cv::Point indexFingerPosition = getIndexFingerPosition(convexityDefects, maxInscribingCircle);
 
+    std::cout << "L463" << std::endl;
 
     return HandData{indexFingerPosition, static_cast<int>(fingertipPoints.size()), true};
 }
@@ -476,7 +503,9 @@ class FastTracker : public HandTracker {
         HandData getHandData(const cv::Mat& image){
             static cv::Mat background = initBackground();
 
-            cv::Mat foreground = backgroundSubtraction(background,(image));
+
+            // testing: removal of background subtraction
+            cv::Mat foreground = image; //backgroundSubtraction(background,image);
             cv::Mat handMask = maskStrategy->makeHandMask(foreground);
             
             std::vector<std::vector<cv::Point>> contours;
@@ -503,10 +532,7 @@ int main(){
     HandMaskStrategy* maskStrategy = new HandMaskStrategy(
         new CompositePostProcessing(
             {
-            new DilationPostProcessing(3), 
-            new ErosionPostProcessing(10),
-            new DilationPostProcessing(8),
-            new GaussianBlurPostProcessing(1), 
+             new DilationPostProcessing(1), 
             }
         )
     );

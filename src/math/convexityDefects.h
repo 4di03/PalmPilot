@@ -22,9 +22,26 @@ struct ConvexityDefect{
  * @param hullIndices the indices of the convex hull points for the contour
  */
 std::vector<ConvexityDefect> getConvexityDefects(const std::vector<cv::Point>& contour, const std::vector<int>& hullIndices){
+
+
+    
+
     std::vector<cv::Vec4i> rawDefects;
     std::vector<ConvexityDefect> defects;
+
+    // print hull indices
+    std::cout << "Hull Indices: ";
+    for (int i = 0; i < hullIndices.size(); i++){
+        std::cout << hullIndices[i] << " ";
+    }
+    std::cout << std::endl;
+    try{
     cv::convexityDefects(contour, hullIndices, rawDefects);
+    } catch (cv::Exception& e){
+        std::cerr << "Error: " << e.what() << std::endl;
+        exit(1);
+    }
+    std::cout << "L367" << std::endl;
     for (cv::Vec4i defect : rawDefects){
         ConvexityDefect cd;
         cd.start = contour[defect[0]];
