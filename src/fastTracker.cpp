@@ -21,7 +21,7 @@
 #define COLOR_CONVERSION cv::COLOR_BGR2YCrCb
 #define MIN_CURVATURE 5 // min angle between hull vectors to be considered a fingertip
 #define MAX_CURVATURE 45 // max angle between hull vectors to be considered a fingertip
-#define CIRCULARITY_THRESHOLD 0.85
+#define CIRCULARITY_THRESHOLD 0.77
 
 /**
  * Computes the circularity of a contour by comparing the area and perimeter of its convex hull
@@ -106,6 +106,7 @@ class MaxAreaFilter : public ContourFilterStrategy{
 
 
             // print the circularity of the contour
+            std::cout << "Circularity: " << getConvexHullCircularity(maxContour) << std::endl;
 
             return maxContour;
         }
@@ -525,6 +526,13 @@ HandData getHandDataFromContour(const std::vector<cv::Point>& contour, const cv:
 
     Circle maxInscribingCircle = getMaxInscribingCircle(contour, img);
 
+    if (DEBUG){
+        cv::Mat inscribingCircleImage = img.clone();
+        cv::circle(inscribingCircleImage, maxInscribingCircle.center, maxInscribingCircle.radius, cv::Scalar(0, 255, 0), 2);
+        cv::imshow("Max Inscribing Circle", inscribingCircleImage);
+    }
+
+
     std::vector<ConvexityDefect> convexityDefects = getConvexityDefects(contour, fingertipIndices);
     
 
@@ -586,7 +594,7 @@ int main(){
             }
         )
     );
-    ContourFilterStrategy* filter = new CompositeFilter({new AreaFilter(), new SolidityFilter(),  new CircularityFilter()}, new MaxAreaFilter());
+    ContourFilterStrategy* filter = new CompositeFilter({new AreaFilter(),   new CircularityFilter()}, new MaxAreaFilter());
     HandTracker* tracker = new FastTracker(filter, maskStrategy);
 
     runHandTracking(tracker);
