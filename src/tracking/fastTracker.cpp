@@ -617,13 +617,6 @@ HandData getHandDataFromContour(const std::vector<cv::Point>& contour, const cv:
         cv::imshow("Fingertips", fingertipImage);
     }
 
-    // print the fingertip indices
-    std::cout << "Fingertip Indices: ";
-    for (int i : fingertipIndices){
-        std::cout << i << " ";
-    }
-    std::cout << std::endl;
-
 
     std::vector<ConvexityDefect> convexityDefects = getConvexityDefects(newContour, fingertipIndices);
     
@@ -639,6 +632,7 @@ HandData getHandDataFromContour(const std::vector<cv::Point>& contour, const cv:
             cv::line(convexityDefectImage, cd.end, cd.furthestPoint, color, 2);
         }
         cv::imshow("Convexity Defects", convexityDefectImage);
+
     }
 
     cv::Point indexFingerPosition = getIndexFingerPosition(convexityDefects, maxInscribingCircle);
@@ -683,19 +677,3 @@ class FastTracker : public HandTracker {
         }
 };
 
-// prototype for deriving keypoints from the webcame stream frames
-int main(){
-
-    HandMaskStrategy* maskStrategy = new HandMaskStrategy(
-        new CompositePostProcessing(
-            {
-             new DilationPostProcessing(1), 
-            }
-        )
-    );
-    ContourFilterStrategy* filter = new CompositeFilter({new AreaFilter(), new CircularityFilter()}, new MaxAreaFilter());
-    HandTracker* tracker = new FastTracker(filter, maskStrategy);
-
-    runHandTracking(tracker);
-    return 0;
-}
