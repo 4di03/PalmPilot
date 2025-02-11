@@ -1,8 +1,9 @@
 #include <opencv2/opencv.hpp>
-#include "handTracking.h"
-#define THRESH_MIN 0
-#define THRESH_MAX 255
-#define FOREGROUND_DILATION_ITERATIONS 10
+#include <iostream>
+#include "backgroundSubtraction.h"
+
+
+
 cv::Mat initBackground(){
     std::cout << "initalizing background image." << std::endl;
     cv::Mat background = cv::imread("data/background.png");

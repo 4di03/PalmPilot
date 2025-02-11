@@ -2,7 +2,7 @@
 cmake_minimum_required(VERSION 3.10)
 
 # Project name
-project(MouseControl)
+project(PalmPilot)
 
 # opencv setup
 find_package(OpenCV REQUIRED)
@@ -15,15 +15,17 @@ set(CMAKE_BUILD_TYPE Debug)
 # Set the output directory for the executable
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
+
+set (FAST_TRACKING_SRC src/tracking/fastTracker.cpp src/tracking/cam.h src/tracking/handTracking.cpp src/tracking/math/convexityDefects.cpp src/tracking/removeFace.cpp src/tracking/backgroundSubtraction.cpp src/tracking/math/kCurvature.cpp src/tracking/math/maxInscribingCircle.cpp src/tracking/calibration.cpp src/tracking/constants.h)
+
 # Add the source file
-add_executable(mouseControl src/mouseControl.cpp) 
-add_executable(webcam_stream src/cam.cpp )
-add_executable(op_tracking src/openposeTracker.cpp src/cam.h src/handTracking.cpp)
-add_executable(fast_tracking src/fastTracker.cpp src/cam.h src/handTracking.cpp src/removeFace.cpp src/backgroundSubtraction.h src/math/kCurvature.h src/math/maxInscribingCircle.cpp src/calibration.cpp src/constants.h)
-add_executable(background_sub src/backgroundSubtraction.cpp )
-add_executable(openpose src/openposeSample.cpp)
-add_executable(check_metal src/metalTest.cpp)
-add_executable(calibration src/runCalibration.cpp src/calibration.cpp)
+add_executable(mouseControl src/mouseControl/mouseControl.cpp) 
+add_executable(webcam_stream src/tracking/cam.cpp )
+add_executable(op_tracking src/tracking/openposeTracker.cpp src/tracking/cam.h src/tracking/handTracking.cpp)
+add_executable(fast_tracking src/tracking/runFastTracking.cpp ${FAST_TRACKING_SRC})
+add_executable(openpose src/tracking/openposeSample.cpp)
+add_executable(check_metal src/tracking/metalTest.cpp)
+add_executable(calibration src/tracking/runCalibration.cpp src/tracking/calibration.cpp)
 
 # Link macOS frameworks
 target_link_libraries(mouseControl PRIVATE "-framework CoreGraphics" "-framework CoreFoundation")
@@ -32,5 +34,4 @@ target_link_libraries(op_tracking ${OpenCV_LIBS})
 target_link_libraries(fast_tracking ${OpenCV_LIBS})
 target_link_libraries(openpose ${OpenCV_LIBS})
 target_link_libraries(check_metal ${OpenCV_LIBS})
-target_link_libraries(background_sub ${OpenCV_LIBS})
 target_link_libraries(calibration ${OpenCV_LIBS})
