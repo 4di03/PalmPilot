@@ -4,45 +4,30 @@
 
 
 
-
-int main() {
-    // Open the default webcam
-    cv::VideoCapture cap(0); // 0 is the ID for the default camera
-    if (!cap.isOpened()) {
-        std::cerr << "Error: Could not open the webcam." << std::endl;
-        return -1;
-    }
-    cv::Mat background = initBackground();
-    // get size of background image
-    cv::Size size = background.size();
-    cv::Mat frame, foreground;
-    int frameCount = 0;
-
-    std::cout << "Press 'q' to quit." << std::endl;
-
-    while (true) {
-        cap >> frame; // Capture a new frame
-        if (frame.empty()) {
-            std::cerr << "Error: Empty frame captured." << std::endl;
-            break;
-        }
-        // Resize frame if necessary (optional)
-        cv::resize(frame, frame, size);
-
-        // Perform background subtraction
-        foreground = backgroundSubtraction(background, frame);
-
-        // Display the results
-        cv::imshow("Webcam Stream", frame);
-        cv::imshow("Foreground", foreground);
-
-        // Break on 'q' key press
-        if (cv::waitKey(1) == 'q') {
-            break;
-        }
+cv::Mat initBackground(){
+    std::cout << "initalizing background image." << std::endl;
+    cv::Mat background = cv::imread("data/background.png");
+    cv::resize(background, background, cv::Size(FRAME_WIDTH, FRAME_HEIGHT));
+    return background;
+}
+// Perform background subtraction by subtracting the background from the frame, and retursn the foreground
+cv::Mat backgroundSubtraction(const cv::Mat& background, const cv::Mat& frame) {
+    // Ensure both images have the same size and type
+    cv::Mat output;
+    if (background.size() != frame.size() || background.type() != frame.type()) {
+        std::cerr << "Background and frame must have the same size and type!" << std::endl;
+        exit(1);
     }
 
-    cap.release(); // Release the webcam
-    cv::destroyAllWindows(); // Close all OpenCV windows
-    return 0;
+    cv::Mat diff = frame - background;
+    cv::Mat mask;
+
+    cv::inRange(diff, THRESH_MIN, THRESH_MAX, mask); // 255 for values within the threshold, 0 otherwise
+
+    // dilate the mask to fill in holes
+    cv::dilate(mask, mask, cv::Mat(), cv::Point(-1, -1), FOREGROUND_DILATION_ITERATIONS);
+
+    cv::bitwise_and(frame, frame, output, mask);
+
+    return output;
 }

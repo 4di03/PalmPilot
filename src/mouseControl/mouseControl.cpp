@@ -1,3 +1,6 @@
+/**
+ * For retrieving and updating the mouse location on MacOS
+ */
 #include <iostream>
 #include <iostream>
 #include <cstdlib>
