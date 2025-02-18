@@ -16,7 +16,6 @@
 #define MAX_DIST 30
 #define INTERVAL 20
 #define ST_DEVS_DIFF 5
-#define COLOR_RANGE_FILE "data/color_range.yaml"
 #define BLUR_SIZE 10
 #define MIN_SOLIDITY 0.5
 #define MAX_SOLIDITY 0.7
@@ -33,12 +32,14 @@ class ContourFilterStrategy
 {
 public:
     virtual std::vector<cv::Point> filterContour(std::vector<std::vector<cv::Point>> contours) = 0;
+    virtual ~ContourFilterStrategy() = default;  // ✅ Virtual destructor
 };
 
 class ValidContourStrategy
 {
 public:
     virtual std::vector<std::vector<cv::Point>> getValidContours(std::vector<std::vector<cv::Point>> contours) = 0;
+    virtual ~ValidContourStrategy() = default;  // ✅ Virtual destructor
 };
 
 class MaxAreaFilter : public ContourFilterStrategy
@@ -84,6 +85,8 @@ class HandMaskPostProcessingStrategy
 {
 public:
     virtual cv::Mat postProcess(cv::Mat &mask) = 0;
+    virtual ~HandMaskPostProcessingStrategy() = default;  // ✅ Virtual destructor
+
 };
 
 class GaussianBlurPostProcessing : public HandMaskPostProcessingStrategy
@@ -173,6 +176,9 @@ private:
 public:
     HandMaskStrategy(HandMaskPostProcessingStrategy *postProcessingStrategy);
     cv::Mat makeHandMask(const cv::Mat &image);
+    ~HandMaskStrategy(){
+        delete postProcessingStrategy;
+    }
 };
 
 // FastTracker Class
@@ -185,6 +191,11 @@ private:
 public:
     FastTracker(ContourFilterStrategy *filterStrategy, HandMaskStrategy *maskStrategy);
     HandData getHandData(const cv::Mat &image) override;
+    ~FastTracker(){
+        delete filterStrategy;
+        delete maskStrategy;
+    }
 };
 
+FastTracker* initBestTracker();
 #endif // FAST_TRACKER_H

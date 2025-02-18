@@ -1,5 +1,6 @@
 #include <opencv2/opencv.hpp>
-
+#define COLOR_RANGE_FILE "/Users/adithyapalle/work/PalmPilot/data/color_range.yaml"
+#pragma once
 // Struct to represent color range
 struct colorRange {
     cv::Scalar lower;

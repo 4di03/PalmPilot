@@ -2,13 +2,14 @@
 #include <sstream>
 #include <vector>
 #include <iostream>
+
 #include "cam.h"
 #include "calibration.h"
+#include "backgroundSubtraction.h"
 #define TL_X 700    
 #define TL_Y 300
 #define SIZE 20
 #define COLOR_CONVERSION cv::COLOR_BGR2YCrCb
-#define COLOR_RANGE_FILE "/Users/adithyapalle/work/PalmPilot/data/color_range.yaml"
 
 
 int calibration_rect_tl_x = TL_X;
@@ -195,7 +196,7 @@ void calibrateColorRange() {
     colorRange range{lower, upper};
     // Save the color range to a file
     std::ofstream file;
-    file.open("data/color_range.yaml");
+    file.open(COLOR_RANGE_FILE);
     if (!file.is_open()) {
         std::cerr << "Error: Could not open file to save color range." << std::endl;
         return;
@@ -214,7 +215,7 @@ void setBackground(){
         cv::imshow("Background", frame);
         char key = static_cast<char>(cv::waitKey(30)); // updates to slider variables are made here
         if (key == 'q'){
-            cv::imwrite("data/background.png", frame);
+            cv::imwrite(BACKGROUND_FILE_LOC, frame);
             break;
         }; // 'q' or 'ESC' to quit
     }

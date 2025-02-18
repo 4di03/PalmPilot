@@ -1,5 +1,6 @@
 #include "fastTracker.h"
-
+#include "cam.h"
+#include "calibration.h"
 /**
  * Computes the circularity of a contour by comparing the area and perimeter of its convex hull
  */
@@ -606,4 +607,20 @@ HandData FastTracker::getHandData(const cv::Mat &image)
     }
 
     return getHandDataFromContour(contour, image);
+}
+
+/**
+ * Factory function to create a new FastTracker instance
+ */
+
+FastTracker* initBestTracker() {
+    HandMaskStrategy* maskStrategy = new HandMaskStrategy(
+        new CompositePostProcessing(
+            {
+             new DilationPostProcessing(1), 
+            }
+        )
+    );
+    ContourFilterStrategy* filter = new CompositeFilter({new AreaFilter(), new CircularityFilter()}, new MaxAreaFilter());
+    return (new FastTracker(filter, maskStrategy));
 }

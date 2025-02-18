@@ -1,12 +1,12 @@
 #include <opencv2/opencv.hpp>
 #include <iostream>
 #include "backgroundSubtraction.h"
-
+#include "cam.h"
 
 
 cv::Mat initBackground(){
     std::cout << "initalizing background image." << std::endl;
-    cv::Mat background = cv::imread("data/background.png");
+    cv::Mat background = cv::imread(BACKGROUND_FILE_LOC);
     cv::resize(background, background, cv::Size(FRAME_WIDTH, FRAME_HEIGHT));
     return background;
 }

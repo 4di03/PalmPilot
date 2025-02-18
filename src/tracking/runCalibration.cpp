@@ -3,7 +3,7 @@
 int main(){
     calibrateColorRange();
 
-    colorRange c = parseColorRange("data/color_range.yaml");
+    colorRange c = parseColorRange(COLOR_RANGE_FILE);
     std::cout << "Saved color range: \n" << c.toString() << std::endl;
     
     setBackground();

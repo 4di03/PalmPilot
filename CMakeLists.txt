@@ -1,6 +1,10 @@
 # Minimum required version of CMake
 cmake_minimum_required(VERSION 3.10)
 
+# minimum required version of C++
+set(CMAKE_CXX_STANDARD 14)
+
+
 # Project name
 project(PalmPilot)
 
@@ -16,22 +20,27 @@ set(CMAKE_BUILD_TYPE Debug)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
 
-set (FAST_TRACKING_SRC src/tracking/fastTracker.cpp src/tracking/cam.h src/tracking/handTracking.cpp src/tracking/math/convexityDefects.cpp src/tracking/removeFace.cpp src/tracking/backgroundSubtraction.cpp src/tracking/math/kCurvature.cpp src/tracking/math/maxInscribingCircle.cpp src/tracking/calibration.cpp src/tracking/constants.h)
+# TODO: convert library header imports to <> instead of ""
+#create a library for tracking
+add_library(tracking src/tracking/fastTracker.cpp src/tracking/cam.h src/tracking/handTracking.cpp src/tracking/math/convexityDefects.cpp src/tracking/removeFace.cpp src/tracking/backgroundSubtraction.cpp src/tracking/math/kCurvature.cpp src/tracking/math/maxInscribingCircle.cpp src/tracking/calibration.cpp src/tracking/constants.h)
+
+target_include_directories(tracking PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/tracking)
+target_link_libraries(tracking ${OpenCV_LIBS})
 
 # Add the source file
 add_executable(mouseControl src/mouseControl/mouseControl.cpp) 
 add_executable(webcam_stream src/tracking/cam.cpp )
-add_executable(op_tracking src/tracking/openposeTracker.cpp src/tracking/cam.h src/tracking/handTracking.cpp)
-add_executable(fast_tracking src/tracking/runFastTracking.cpp ${FAST_TRACKING_SRC})
+add_executable(op_tracking src/tracking/openposeTracker.cpp)
+add_executable(fast_tracking src/tracking/runFastTracking.cpp)
 add_executable(openpose src/tracking/openposeSample.cpp)
 add_executable(check_metal src/tracking/metalTest.cpp)
-add_executable(calibration src/tracking/runCalibration.cpp src/tracking/calibration.cpp)
+add_executable(calibration src/tracking/runCalibration.cpp)
 
 # Link macOS frameworks
-target_link_libraries(mouseControl PRIVATE "-framework CoreGraphics" "-framework CoreFoundation")
-target_link_libraries(webcam_stream ${OpenCV_LIBS})
-target_link_libraries(op_tracking ${OpenCV_LIBS})
-target_link_libraries(fast_tracking ${OpenCV_LIBS})
-target_link_libraries(openpose ${OpenCV_LIBS})
-target_link_libraries(check_metal ${OpenCV_LIBS})
-target_link_libraries(calibration ${OpenCV_LIBS})
+target_link_libraries(mouseControl PRIVATE "-framework CoreGraphics" "-framework CoreFoundation" tracking)
+target_link_libraries(webcam_stream PRIVATE tracking)
+target_link_libraries(op_tracking  PRIVATE tracking)
+target_link_libraries(fast_tracking  PRIVATE tracking)
+target_link_libraries(openpose PRIVATE tracking)
+target_link_libraries(check_metal  PRIVATE tracking)
+target_link_libraries(calibration  PRIVATE tracking)

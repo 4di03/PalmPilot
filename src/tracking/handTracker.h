@@ -1,6 +1,9 @@
 #include <opencv2/opencv.hpp>
 #pragma once
 
+
+
+#define NULL_POINT cv::Point(-1,-1) // null value for a point
 struct HandData{
     cv::Point indexFingerPosition; // point of the index finger if it and the thumb are raised, (-1,-1) if it is not raised
     int numFingersRaised; // number of fingers raised, between 0 and 5
