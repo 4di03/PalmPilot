@@ -1,5 +1,6 @@
 #include <opencv2/opencv.hpp>
 #define COLOR_RANGE_FILE "/Users/adithyapalle/work/PalmPilot/data/color_range.yaml"
+#define TRACKING_BOX_FILE "/Users/adithyapalle/work/PalmPilot/data/tracking_box.yaml"
 #pragma once
 // Struct to represent color range
 struct colorRange {
@@ -12,7 +13,18 @@ struct colorRange {
     }
 };
 
+
+
+
+
+
 colorRange parseColorRange(std::string path);
+cv::Rect parseTrackingBox(std::string path);
+
+// updates teh color range in the file
 void calibrateColorRange();
+
+// updates the tracking box in the file
+void calibrateTrackingBox();
 
 void setBackground();

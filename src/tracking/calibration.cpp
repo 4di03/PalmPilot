@@ -221,3 +221,197 @@ void setBackground(){
     }
 
 }
+
+// Parses the tracking box from a file
+cv::Rect parseTrackingBox(std::string path) {
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open file to read tracking box." << std::endl;
+        exit(1);
+    }
+
+    // Read the line
+    std::string line;
+    std::getline(file, line);
+
+    std::vector<std::string> values = split(line, "top_left_x: ");
+    if (values.size() != 2) {
+        std::cerr << "Error: Could not parse top left x value." << std::endl;
+        std::cerr << "Got: " << line << std::endl;
+        exit(1);
+    }
+    int tl_x = std::stoi(values[1]);
+
+    std::getline(file, line);
+    values = split(line, "top_left_y: ");
+    if (values.size() != 2) {
+        std::cerr << "Error: Could not parse top left y value." << std::endl;
+        std::cerr << "Got: " << line << std::endl;
+        exit(1);
+    }
+
+
+    int tl_y = std::stoi(values[1]);
+
+    std::getline(file, line);
+    values = split(line, "width: ");
+    if (values.size() != 2) {
+        std::cerr << "Error: Could not parse width value." << std::endl;
+        std::cerr << "Got: " << line << std::endl;
+        exit(1);
+    }
+
+    int width = std::stoi(values[1]);
+
+    std::getline(file, line);
+
+    values = split(line, "height: ");
+    if (values.size() != 2) {
+        std::cerr << "Error: Could not parse height value." << std::endl;
+        std::cerr << "Got: " << line << std::endl;
+        exit(1);
+    }
+
+
+    int height = std::stoi(values[1]);
+
+
+    return cv::Rect(tl_x, tl_y, width, height);
+
+}
+
+
+/**
+ * Callback function for dragging and resizing a rectangle
+ */
+void dragRectCallback(int event, int x, int y, int flags, void* userdata) {
+    auto* rectPtr = static_cast<cv::Rect*>(userdata);
+    static cv::Point clickOffset;
+    static bool dragging = false;
+    static int resizeDirection = -1; // 0: Left, 1: Right, 2: Top, 3: Bottom, -1 is not resizing
+    constexpr int resizeBorder = 10;
+
+    if (!rectPtr){
+        std::cerr << "Error: No rectangle pointer provided." << std::endl;
+        exit(1);
+    }
+    cv::Rect& rect = *rectPtr;
+
+    //std::cout << "Rect: " << rect << std::endl;
+
+    bool onLeft   = (abs(x - rect.x) < resizeBorder);
+    bool onRight  = (abs(x - (rect.x + rect.width)) < resizeBorder);
+    bool onTop    = (abs(y - rect.y) < resizeBorder);
+    bool onBottom = (abs(y - (rect.y + rect.height)) < resizeBorder);
+    cv::Point point(x, y);
+
+    switch (event) {
+        case cv::EVENT_LBUTTONDOWN:
+            if (onLeft) {
+                resizeDirection = 0; // Left
+            } else if (onRight) {
+                resizeDirection = 1; // Right
+            } else if (onTop) {
+                resizeDirection = 2; // Top
+
+            } else if (onBottom) {
+                resizeDirection = 3; // Bottom
+            } else if (rect.contains(point)) { 
+                std::cout << "Dragging" << std::endl;
+                dragging = true;
+                resizeDirection = -1;
+                clickOffset = point - cv::Point(rect.x, rect.y);
+            } else {
+                dragging = false;
+                resizeDirection = -1;
+            }
+            break;
+
+        case cv::EVENT_MOUSEMOVE:
+            if (dragging) {
+                rect.x = x - clickOffset.x;
+                rect.y = y - clickOffset.y;
+            } else if (resizeDirection != -1) { // Resizing
+                switch (resizeDirection) {
+                    case 0: rect.width += rect.x - x; rect.x = x; break; // Left
+                    case 1: rect.width = x - rect.x; break;             // Right
+                    case 2: rect.height += rect.y - y; rect.y = y; break; // Top
+                    case 3: rect.height = y - rect.y; break;             // Bottom
+                }
+                // Ensure minimum size
+                rect.width = std::max(rect.width, 20);
+                rect.height = std::max(rect.height, 20);
+            }
+            break;
+
+        case cv::EVENT_LBUTTONUP:
+            dragging = false;
+            resizeDirection = -1;
+            break;
+    }
+}
+
+/**
+ * Drag a rectangle to set the tracking box
+ */
+void calibrateTrackingBox() {
+    // Load the background image
+    VideoStream stream(0);
+    // Create a window
+    const std::string windowName = "Calibration";
+    cv::namedWindow(windowName, cv::WINDOW_AUTOSIZE);
+
+    // Load previous tracking box if available
+    std::ifstream trackingBoxFile(TRACKING_BOX_FILE);
+    cv::Rect previousBox;
+    if (trackingBoxFile.is_open()) {
+        std::cout << "Tracking box file found. Loading previous tracking box." << std::endl;
+        trackingBoxFile.close();
+        previousBox = parseTrackingBox(TRACKING_BOX_FILE);
+    } else {
+        std::cout << "No tracking box file found. Setting default tracking box." << std::endl;
+        previousBox = cv::Rect(100, 100, 100, 100);
+    }
+
+    // Set mouse callback
+    cv::setMouseCallback(windowName, dragRectCallback, &previousBox);
+
+    std::cout << "Please drag the rectangle to set the tracking box. Make sure the box is not obstructed by the face and is comfortable for the user." << std::endl;
+    std::cout << "Press 'q' or 'ESC' to exit the calibration and save the results.." << std::endl;
+    // Calibration loop
+    while (true) {
+
+        // Convert the background image to YCrCb
+        cv::Mat image = stream.getFrame();
+
+        // draw a box and the average YCrCb values of it to help user calibrate
+
+        cv::rectangle(image, previousBox, cv::Scalar(0, 255, 0), 2);
+
+        cv::imshow(windowName, image);
+
+        // Exit if the user presses 'q'
+        char key = static_cast<char>(cv::waitKey(1)); // updates to slider variables are made here
+        if (key == 'q' || key == 27) break; // 'q' or 'ESC' to quit
+    }
+
+
+    // Save the tracking box to a file
+
+
+    std::ofstream file;
+    file.open(TRACKING_BOX_FILE);
+    if (!file.is_open()) {
+        std::cerr << "Error: Could not open file to save tracking box." << std::endl;
+        return;
+    }
+    // Write the tracking box to the file as
+    file << "top_left_x: " << previousBox.x << std::endl;
+    file << "top_left_y: " << previousBox.y << std::endl;
+    file << "width: " << previousBox.width << std::endl;
+    file << "height: " << previousBox.height << std::endl;
+    file.close();
+
+    cv::destroyAllWindows();
+
+}
