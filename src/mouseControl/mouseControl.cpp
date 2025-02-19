@@ -7,8 +7,10 @@
 #include <cstring>
 #include <ApplicationServices/ApplicationServices.h>
 #include "handTracker.h"
+#include "handTracking.h"
 #include "cam.h"
 #include "fastTracker.h"
+#include "calibration.h"
 #include <chrono>
 #include <thread>
 
@@ -125,6 +127,48 @@ void raiseKeyboard(){
 }
 
 /**
+ * State of FSM for controlling the mouse and keyboard
+ */
+class ControlState{
+    private:
+        bool keyboardRaised = false;
+        bool leftClicked = false;
+    public:
+        void reset(){
+            keyboardRaised = false;
+            leftClicked = false;
+        }
+
+        void moveMouse(){
+            // move mouse resets click, but keyboard may still be raised
+            leftClicked = false;
+        }
+
+        void raiseKeyboard(){
+            keyboardRaised = true;
+            leftClicked = false;
+        }
+
+        void clickMouse(){
+            leftClicked = true;
+        }
+
+        void lowerKeyboard(){
+            keyboardRaised = false;
+        }
+
+        bool isKeyboardRaised(){
+            return keyboardRaised;
+        }
+
+        bool isLeftClicked(){
+            return leftClicked;
+        }
+
+
+};
+
+/**
  * Executes the mouse movement, clicks, and keyboard actions and click given hand location
  */
 class Executor{
@@ -138,59 +182,69 @@ class Executor{
             screenDims = std::pair<int,int>(screenWidth,screenHeight);
         }
 
-        void execute(const HandData& data){
-            
-
-
-            if (data.handDetected){
-                if (data.numFingersRaised >= 5){
-                    raiseKeyboard();
-                }else if (data.indexFingerPosition != NULL_POINT){ // if the index finger is raised and not all 5 fingers are raised
-                    // Move the mouse to the index finger position
-
-                    int x = data.indexFingerPosition.x;
-                    int y = data.indexFingerPosition.y;
-
-                    std::cout << "Found finger at: " << x << "," << y << std::endl;
-
-                    std::pair<int,int> newMouseLocation = getNewMouseLocation(std::pair<int,int>(x,y),frameDims,screenDims);
-                    
-                    std::cout << "Moving Mouse to: " << newMouseLocation.first << "," << newMouseLocation.second << std::endl;
-                    mc.moveMouseToAbsolute(newMouseLocation.first, newMouseLocation.second);
-                }else{
-                    // if hand is raised but no fingers are raised, click the mouse
-                    std::cout << "Left Clicking Mouse" << std::endl;
-                    mc.leftClick();
-                }
-            }else{
-                std::cout << "No hand detected, not doing anything" << std::endl;
+        /**
+         * Executes the mouse movement, clicks, and keyboard actions and click given hand location
+         * Updates the state of the control
+         */
+        void execute(const HandData& data, ControlState& state) {
+            if (!data.handDetected) {
+                state.reset();
+                return;
             }
-        }
+
+            if (data.numFingersRaised >= 5 && !state.isKeyboardRaised()) {
+                std::cout << "Raising keyboard..." << std::endl;
+                state.raiseKeyboard();
+            } 
+            else if (data.numFingersRaised == 0 && !state.isLeftClicked()) {
+                std::cout << "Left Clicking Mouse" << std::endl;
+                state.clickMouse();
+                mc.leftClick();
+            } 
+            else if (data.indexFingerPosition != NULL_POINT) {  
+                int x = data.indexFingerPosition.x;
+                int y = data.indexFingerPosition.y;
+
+
+                std::pair<int,int> newMouseLocation = getNewMouseLocation(std::pair<int,int>(x,y),frameDims,screenDims);
+                mc.moveMouseToAbsolute(newMouseLocation.first, newMouseLocation.second);
+                state.moveMouse();
+            }   
+        }          
+
 };
 
-
-
+// TODO: improve smoothness (averaging or kalman filter)
+// TODO: reduce sensitivity of left click (smoothness may help)
+// TODO: improve pinky detection so that raise keyboard is more reliable
 // TODO: move this to a proper main file
 // TODO: move all the components of the main function to a composed application class and encapsulate it into a simple run function
 int main() {
     VideoStream vs(0);
-    cv::Size frameSize = vs.getFrameSize();
+    cv::Rect trackingBox = parseTrackingBox(TRACKING_BOX_FILE);
     HandTracker* tracker = initBestTracker();
-    Executor e(frameSize.width, frameSize.height, SCREEN_WIDTH, SCREEN_HEIGHT);
+    Executor e(trackingBox.width, trackingBox.height, SCREEN_WIDTH, SCREEN_HEIGHT);
 
-    int targetFps = 30;
+    int targetFps = 10;
     const int FRAME_TIME_MS = 1000/targetFps;  // Time in milliseconds for each frame
-    
+    ControlState state = ControlState();
     while (true) {
         auto frameStart = std::chrono::steady_clock::now();  // Start time
 
         cv::Mat frame = vs.getFrame();
         HandData data = tracker->getHandData(frame);
-        e.execute(data);
+        e.execute(data,state);
+
+        // optional display
+        displayHandData(frame,data);
+        cv::imshow("Hand Tracking", frame);
+        cv::waitKey(1);
 
         // Calculate time taken for processing
         auto frameEnd = std::chrono::steady_clock::now();
         auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart);
+
+
 
         // Sleep only for the remaining time to maintain consistent FPS
         auto sleepTime = std::chrono::milliseconds(FRAME_TIME_MS) - elapsed;

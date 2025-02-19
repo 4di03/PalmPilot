@@ -1,6 +1,7 @@
 #include "cam.h"
 #include "handTracker.h"
 #include "handTracking.h"
+#include "calibration.h"
 #include <chrono>
 #include <opencv2/core/ocl.hpp>
 #include "constants.h"
@@ -30,8 +31,16 @@ void drawKeypoints(cv::Mat& img, std::vector<cv::Point>& keypoints){
  * @param handData handData info to print/display
  */
 void displayHandData(cv::Mat& img, HandData& handData){
+    // put a rect around the tracking box
+    static cv::Rect trackingBox = parseTrackingBox(TRACKING_BOX_FILE);
+    cv::rectangle(img, trackingBox, cv::Scalar(0, 200, 0), 2);
+
+
+    // adjust index finger position to the tracking box
+    cv::Point adjustedPoint = handData.indexFingerPosition + cv::Point(trackingBox.x, trackingBox.y);
+
     // draw the index finger position
-    circle(img, handData.indexFingerPosition, 3, cv::Scalar(0, 200, 0), -1);
+    circle(img, adjustedPoint, 3, cv::Scalar(0, 200, 0), -1);
     // write the number of fingers raised on screen
     cv::putText(img, std::to_string(handData.numFingersRaised), cv::Point(10, 50), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 200, 0), 2);
 

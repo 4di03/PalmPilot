@@ -391,7 +391,7 @@ void calibrateTrackingBox() {
         cv::imshow(windowName, image);
 
         // Exit if the user presses 'q'
-        char key = static_cast<char>(cv::waitKey(1)); // updates to slider variables are made here
+        char key = cv::waitKey(1); // updates to slider variables are made here
         if (key == 'q' || key == 27) break; // 'q' or 'ESC' to quit
     }
 

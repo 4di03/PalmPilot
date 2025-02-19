@@ -24,7 +24,7 @@
 #define COLOR_CONVERSION cv::COLOR_BGR2YCrCb
 #define MIN_CURVATURE 10
 #define MAX_CURVATURE 90
-#define CIRCULARITY_THRESHOLD 0.77
+#define CIRCULARITY_THRESHOLD 0.77 // TODO; figure out why this is variable with roi size (maaybe beucase in box bottom of arm is cut off?)
 #define MAX_INSCRIBING_CIRCLE_CONTOUR_DIST 6
 
 // Strategy Classes

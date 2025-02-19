@@ -67,7 +67,10 @@ colorRange getRangeFromImage(std::string imagePath)
 std::vector<cv::Point> MaxAreaFilter::filterContour(std::vector<std::vector<cv::Point>> contours)
 {
     if (contours.empty())
-    {
+    {   
+        if (DEBUG){
+            std::cout << "No contours passed to MaxAreaFilter" << std::endl;
+        }
         return std::vector<cv::Point>();
     }
     std::vector<cv::Point> maxContour = *(std::max_element(contours.begin(), contours.end(),
@@ -107,16 +110,22 @@ std::vector<std::vector<cv::Point>> AreaFilter::getValidContours(std::vector<std
 {
     if (contours.empty())
     {
+        if(DEBUG){
+            std::cout << "No contours passed to AreaFilter" << std::endl;
+        }
         return std::vector<std::vector<cv::Point>>();
     }
     // Sort contours by area in descending order and return the largest one
 
     std::vector<std::vector<cv::Point>> validContours;
-    double imageArea = FRAME_WIDTH * FRAME_HEIGHT;
+
+    static cv::Rect trackingBox = parseTrackingBox(TRACKING_BOX_FILE);
+    double roiArea = trackingBox.width * trackingBox.height;
     for (auto contour : contours)
     {
-        double prop = cv::contourArea(contour) / imageArea;
-        if (prop > MIN_PROP && prop < MAX_PROP)
+        double prop = cv::contourArea(contour) / roiArea;
+
+        if (prop > MIN_PROP)
         {
 
             validContours.push_back(contour);
@@ -131,7 +140,10 @@ std::vector<std::vector<cv::Point>> AreaFilter::getValidContours(std::vector<std
 std::vector<std::vector<cv::Point>> CircularityFilter::getValidContours(std::vector<std::vector<cv::Point>> contours)
 {
     if (contours.empty())
-    {
+    {   
+        if(DEBUG){
+            std::cout << "No contours passed to CircularityFilter" << std::endl;
+        }
         return std::vector<std::vector<cv::Point>>();
     }
     // Sort contours by area in descending order and return the largest one
@@ -140,6 +152,9 @@ std::vector<std::vector<cv::Point>> CircularityFilter::getValidContours(std::vec
     for (auto contour : contours)
     {
         float circularity = getConvexHullCircularity(contour);
+        if(DEBUG){
+            std::cout << "Circularity: " << circularity << std::endl;
+        }
         if (circularity < CIRCULARITY_THRESHOLD)
         {
             validContours.push_back(contour);
@@ -487,6 +502,9 @@ HandData getHandDataFromContour(const std::vector<cv::Point> &contour, const cv:
 {
     if (contour.size() == 0)
     {
+        if (DEBUG){
+            std::cerr << "Error: Empty contour passed to getHandDataFromContour" << std::endl;
+        }
         return HandData{cv::Point(-1, -1), 0, false};
     }
 
@@ -585,20 +603,32 @@ FastTracker::FastTracker(ContourFilterStrategy *filterStrategy, HandMaskStrategy
     this->maskStrategy = maskStrategy;
 }
 
+/**
+ * Gets the HandData relative to the tracking box from the image (defined in TRACKING_BOX_FILE)
+ * @param image The image to get the hand data from
+ * @return HandData object containing the hand data
+ */
 HandData FastTracker::getHandData(const cv::Mat &image)
 {
-    static cv::Mat background = initBackground();
 
-    // testing: removal of background subtraction
-    cv::Mat foreground = image; // backgroundSubtraction(background,image);
-    cv::Mat handMask = maskStrategy->makeHandMask(foreground);
+    // slice only the region of interest (tracking box)
+    static cv::Rect trackingBox = parseTrackingBox(TRACKING_BOX_FILE);
+    cv::Mat roi = image(trackingBox);
+    cv::Mat handMask = maskStrategy->makeHandMask(roi);
 
     std::vector<std::vector<cv::Point>> contours;
     cv::findContours(handMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+    if (DEBUG){
+        std::cout << "Contours size pre-filter: " << contours.size() << std::endl;
+    }
+
     std::vector<cv::Point> contour = filterStrategy->filterContour(contours);
+
 
     if (DEBUG)
     {
+        std::cout<<  "Contour size: " << contour.size() << std::endl;
         // // draw the contour
         // cv::Mat contourImage = cv::Mat::zeros(handMask.size(), CV_8UC3);
         // cv::drawContours(contourImage, std::vector<std::vector<cv::Point>>{contour}, -1, cv::Scalar(0, 255, 0), 2);
@@ -606,7 +636,7 @@ HandData FastTracker::getHandData(const cv::Mat &image)
         // cv::imshow("Hand Mask", handMask);
     }
 
-    return getHandDataFromContour(contour, image);
+    return getHandDataFromContour(contour, roi);
 }
 
 /**
@@ -621,6 +651,6 @@ FastTracker* initBestTracker() {
             }
         )
     );
-    ContourFilterStrategy* filter = new CompositeFilter({new AreaFilter(), new CircularityFilter()}, new MaxAreaFilter());
+    ContourFilterStrategy* filter = new CompositeFilter({new AreaFilter()}, new MaxAreaFilter());
     return (new FastTracker(filter, maskStrategy));
 }
