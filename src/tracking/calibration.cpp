@@ -222,8 +222,22 @@ void setBackground(){
 
 }
 
+
+/**
+ * Splits a string based on a delimiter and returns the second part as a float
+ */
+float getValue(std::string line, std::string label){
+    std::vector<std::string> values = split(line, label + ": ");
+    if (values.size() != 2) {
+        std::cerr << "Error: Could not parse " << label << " value." << std::endl;
+        std::cerr << "Got: " << line << std::endl;
+        exit(1);
+    }
+    return std::stof(values[1]);
+}
+
 // Parses the tracking box from a file
-cv::Rect parseTrackingBox(std::string path) {
+TrackingRect parseTrackingBox(std::string path) {
     std::ifstream file(path);
     if (!file.is_open()) {
         std::cerr << "Error: Could not open file to read tracking box." << std::endl;
@@ -234,58 +248,36 @@ cv::Rect parseTrackingBox(std::string path) {
     std::string line;
     std::getline(file, line);
 
-    std::vector<std::string> values = split(line, "top_left_x: ");
-    if (values.size() != 2) {
-        std::cerr << "Error: Could not parse top left x value." << std::endl;
-        std::cerr << "Got: " << line << std::endl;
-        exit(1);
-    }
-    int tl_x = std::stoi(values[1]);
-
-    std::getline(file, line);
-    values = split(line, "top_left_y: ");
-    if (values.size() != 2) {
-        std::cerr << "Error: Could not parse top left y value." << std::endl;
-        std::cerr << "Got: " << line << std::endl;
-        exit(1);
-    }
-
-
-    int tl_y = std::stoi(values[1]);
-
-    std::getline(file, line);
-    values = split(line, "width: ");
-    if (values.size() != 2) {
-        std::cerr << "Error: Could not parse width value." << std::endl;
-        std::cerr << "Got: " << line << std::endl;
-        exit(1);
-    }
-
-    int width = std::stoi(values[1]);
+    float tl_x = getValue(line, "top_left_x");
 
     std::getline(file, line);
 
-    values = split(line, "height: ");
-    if (values.size() != 2) {
-        std::cerr << "Error: Could not parse height value." << std::endl;
-        std::cerr << "Got: " << line << std::endl;
-        exit(1);
-    }
+    float tl_y = getValue(line, "top_left_y");
+
+    std::getline(file, line);
+
+    float my = getValue(line, "middle_y");
+
+    std::getline(file, line);
+
+    float br_x = getValue(line, "bottom_right_x");
+
+    std::getline(file, line);
+
+    float br_y = getValue(line, "bottom_right_y");
 
 
-    int height = std::stoi(values[1]);
+    return TrackingRect(cv::Point(tl_x, tl_y), my, cv::Point(br_x, br_y));
 
-
-    return cv::Rect(tl_x, tl_y, width, height);
 
 }
 
 
 /**
- * Callback function for dragging and resizing a rectangle
+ * Callback function for dragging and resizing the tracking box
  */
 void dragRectCallback(int event, int x, int y, int flags, void* userdata) {
-    auto* rectPtr = static_cast<cv::Rect*>(userdata);
+    auto* rectPtr = static_cast<TrackingRect*>(userdata);
     static cv::Point clickOffset;
     static bool dragging = false;
     static int resizeDirection = -1; // 0: Left, 1: Right, 2: Top, 3: Bottom, -1 is not resizing
@@ -295,14 +287,20 @@ void dragRectCallback(int event, int x, int y, int flags, void* userdata) {
         std::cerr << "Error: No rectangle pointer provided." << std::endl;
         exit(1);
     }
-    cv::Rect& rect = *rectPtr;
+    TrackingRect& rect = *rectPtr;
 
     //std::cout << "Rect: " << rect << std::endl;
 
-    bool onLeft   = (abs(x - rect.x) < resizeBorder);
-    bool onRight  = (abs(x - (rect.x + rect.width)) < resizeBorder);
-    bool onTop    = (abs(y - rect.y) < resizeBorder);
-    bool onBottom = (abs(y - (rect.y + rect.height)) < resizeBorder);
+    // todo : make more robust so that its only if its on the x/y value and on the rect (right now it just checks if it lines up with the lines)
+    // todo: fix bug where if its too small, you wont be able to split the bottom from the middle
+    bool onLeft   = (abs(x - rect.topLeft.x) < resizeBorder);
+    bool onRight  = (abs(x - rect.bottomRight.x ) < resizeBorder);
+    bool onTop    = (abs(y - rect.topLeft.y) < resizeBorder);
+    bool onBottom = (abs(y - rect.bottomRight.y) < resizeBorder);
+    bool onMiddle=  (abs(y - rect.middleY) < resizeBorder);
+
+
+
     cv::Point point(x, y);
 
     switch (event) {
@@ -316,11 +314,13 @@ void dragRectCallback(int event, int x, int y, int flags, void* userdata) {
 
             } else if (onBottom) {
                 resizeDirection = 3; // Bottom
+            }else if (onMiddle){
+                resizeDirection = 4; // Middle
             } else if (rect.contains(point)) { 
                 std::cout << "Dragging" << std::endl;
                 dragging = true;
                 resizeDirection = -1;
-                clickOffset = point - cv::Point(rect.x, rect.y);
+                clickOffset = point - cv::Point(rect.topLeft.x, rect.topLeft.y);
             } else {
                 dragging = false;
                 resizeDirection = -1;
@@ -329,18 +329,40 @@ void dragRectCallback(int event, int x, int y, int flags, void* userdata) {
 
         case cv::EVENT_MOUSEMOVE:
             if (dragging) {
-                rect.x = x - clickOffset.x;
-                rect.y = y - clickOffset.y;
+                // previous values
+                int width = rect.width();
+                int height = rect.height();
+                int screenHeight = rect.screenHeight();
+
+
+                rect.topLeft.x = x - clickOffset.x;
+                rect.topLeft.y = y - clickOffset.y;
+                rect.middleY = rect.topLeft.y + screenHeight;
+                rect.bottomRight.x = rect.topLeft.x + width;
+                rect.bottomRight.y = rect.topLeft.y + height;
+
             } else if (resizeDirection != -1) { // Resizing
                 switch (resizeDirection) {
-                    case 0: rect.width += rect.x - x; rect.x = x; break; // Left
-                    case 1: rect.width = x - rect.x; break;             // Right
-                    case 2: rect.height += rect.y - y; rect.y = y; break; // Top
-                    case 3: rect.height = y - rect.y; break;             // Bottom
+                    case 0:  //Left
+                        rect.topLeft.x = x;
+                        break;    
+                    case 1: //Right
+                        rect.bottomRight.x = x;
+                        break;    
+                    case 2: // Top
+                        rect.topLeft.y = y;
+                        break; 
+                    case 3: // Bottom
+                        rect.bottomRight.y = y;
+                        break;       
+                    case 4: // Middle
+
+                        if (y > rect.topLeft.y && y < rect.bottomRight.y){
+                            rect.middleY = y;
+                        }
+                        break; 
                 }
-                // Ensure minimum size
-                rect.width = std::max(rect.width, 20);
-                rect.height = std::max(rect.height, 20);
+
             }
             break;
 
@@ -363,14 +385,14 @@ void calibrateTrackingBox() {
 
     // Load previous tracking box if available
     std::ifstream trackingBoxFile(TRACKING_BOX_FILE);
-    cv::Rect previousBox;
+    TrackingRect previousBox;
     if (trackingBoxFile.is_open()) {
         std::cout << "Tracking box file found. Loading previous tracking box." << std::endl;
         trackingBoxFile.close();
         previousBox = parseTrackingBox(TRACKING_BOX_FILE);
     } else {
         std::cout << "No tracking box file found. Setting default tracking box." << std::endl;
-        previousBox = cv::Rect(100, 100, 100, 100);
+        previousBox = TrackingRect(cv::Point(100, 100), 200, cv::Point(200, 300));
     }
 
     // Set mouse callback
@@ -385,8 +407,7 @@ void calibrateTrackingBox() {
         cv::Mat image = stream.getFrame();
 
         // draw a box and the average YCrCb values of it to help user calibrate
-
-        cv::rectangle(image, previousBox, cv::Scalar(0, 255, 0), 2);
+        previousBox.draw(image);
 
         cv::imshow(windowName, image);
 
@@ -406,10 +427,11 @@ void calibrateTrackingBox() {
         return;
     }
     // Write the tracking box to the file as
-    file << "top_left_x: " << previousBox.x << std::endl;
-    file << "top_left_y: " << previousBox.y << std::endl;
-    file << "width: " << previousBox.width << std::endl;
-    file << "height: " << previousBox.height << std::endl;
+    file << "top_left_x: " << previousBox.topLeft.x << std::endl;
+    file << "top_left_y: " << previousBox.topLeft.y << std::endl;
+    file << "middle_y: " << previousBox.middleY << std::endl;
+    file << "bottom_right_x: " << previousBox.bottomRight.x << std::endl;
+    file << "bottom_right_y: " << previousBox.bottomRight.y << std::endl;
     file.close();
 
     cv::destroyAllWindows();

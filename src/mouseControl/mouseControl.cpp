@@ -201,7 +201,7 @@ class Executor{
                 state.clickMouse();
                 mc.leftClick();
             } 
-            else if (data.indexFingerPosition != NULL_POINT) {  
+            else if (data.indexFingerPosition.x != -1) {  
                 int x = data.indexFingerPosition.x;
                 int y = data.indexFingerPosition.y;
 
@@ -221,9 +221,9 @@ class Executor{
 // TODO: move all the components of the main function to a composed application class and encapsulate it into a simple run function
 int main() {
     VideoStream vs(0);
-    cv::Rect trackingBox = parseTrackingBox(TRACKING_BOX_FILE);
+    TrackingRect trackingBox = parseTrackingBox(TRACKING_BOX_FILE);
     HandTracker* tracker = initBestTracker();
-    Executor e(trackingBox.width, trackingBox.height, SCREEN_WIDTH, SCREEN_HEIGHT);
+    Executor e(trackingBox.screenWidth(), trackingBox.screenHeight(), SCREEN_WIDTH, SCREEN_HEIGHT);
 
     int targetFps = 10;
     const int FRAME_TIME_MS = 1000/targetFps;  // Time in milliseconds for each frame

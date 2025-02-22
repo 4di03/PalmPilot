@@ -18,8 +18,8 @@ int main(){
     std::cin >> response;
     if (response == 'y'){
         calibrateTrackingBox();
-        cv::Rect t = parseTrackingBox(TRACKING_BOX_FILE);
-        std::cout << "Saved tracking box: \n" << t << std::endl;
+        TrackingRect t = parseTrackingBox(TRACKING_BOX_FILE);
+        std::cout << "Saved tracking box" << std::endl;
         
 
     }else{

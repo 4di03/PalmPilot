@@ -5,7 +5,8 @@
 #include <chrono>
 #include <opencv2/core/ocl.hpp>
 #include "constants.h"
-#define INTERP_INTERVAL 10 // extracts the keypoints every 10 frames
+#define INTERP_INTERVAL 1 // extracts the keypoints every 10 frames
+#define ANONYMIZE true // blurs the image to anonymize the user
 /**
  * Draws the keypoints on the image
  * @param image the image to draw the keypoints on
@@ -27,25 +28,44 @@ void drawKeypoints(cv::Mat& img, std::vector<cv::Point>& keypoints){
 
 /**
  * Displays the hand data on the image
- * @param image the image to draw the keypoints on
+ * @param img the image to draw the keypoints on
  * @param handData handData info to print/display
  */
-void displayHandData(cv::Mat& img, HandData& handData){
-    // put a rect around the tracking box
-    static cv::Rect trackingBox = parseTrackingBox(TRACKING_BOX_FILE);
-    cv::rectangle(img, trackingBox, cv::Scalar(0, 200, 0), 2);
+void displayHandData(cv::Mat& img, HandData& handData) {
+    static TrackingRect trackingBox = parseTrackingBox(TRACKING_BOX_FILE);
 
+    // Create a blurred version of the entire image
 
-    // adjust index finger position to the tracking box
-    cv::Point adjustedPoint = handData.indexFingerPosition + cv::Point(trackingBox.x, trackingBox.y);
+    cv::Mat trackingRegion = trackingBox.cropImage(img);
 
-    // draw the index finger position
-    circle(img, adjustedPoint, 3, cv::Scalar(0, 200, 0), -1);
-    // write the number of fingers raised on screen
-    cv::putText(img, std::to_string(handData.numFingersRaised), cv::Point(10, 50), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 200, 0), 2);
+    if (ANONYMIZE){
+    cv::Mat blurredImg;
 
-    // write the boolean value of the hand being raised
-    cv::putText(img, handData.handDetected ? "True" : "False", cv::Point(10, 100), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 200, 0), 2);
+    cv::GaussianBlur(img, img, cv::Size(21, 21), 1000);
+    img *= 0.1;
+    }
+
+    // Overlay the unblurred tracking region back onto the blurred image
+    trackingRegion.copyTo(img(cv::Rect(trackingBox.topLeft, trackingBox.bottomRight)));
+
+    // Draw the tracking box
+    trackingBox.draw(img);
+
+    // Adjust index finger position relative to the tracking box
+    if (handData.indexFingerPosition.x != -1) {
+        cv::Point adjustedPoint = handData.indexFingerPosition + cv::Point(trackingBox.topLeft.x, trackingBox.topLeft.y);
+
+        // Draw the index finger position
+        cv::circle(img, adjustedPoint, 3, cv::Scalar(0, 200, 0), -1);
+    }
+
+    // Display the number of fingers raised
+    cv::putText(img, std::to_string(handData.numFingersRaised), cv::Point(10, 50), 
+                cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 200, 0), 2);
+
+    // Display whether the hand is detected
+    cv::putText(img, handData.handDetected ? "True" : "False", cv::Point(10, 100), 
+                cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 200, 0), 2);
 }
 // runs hand tracker on vide stream and draws keypoints 
 void plotHandKeypoints(HandKeypointTracker* tracker){
@@ -135,7 +155,7 @@ void runHandTracking(HandTracker* tracker){
             std::cerr << "Error: Failed to capture frame." << std::endl;
             break;
         }
-        HandData handData;
+        HandData handData = HandData{cv::Point(-1, -1), 0, false};
         if (ct % INTERP_INTERVAL == 0){
 
             auto start = std::chrono::high_resolution_clock::now();

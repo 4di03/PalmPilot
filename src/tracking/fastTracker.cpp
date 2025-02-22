@@ -119,8 +119,8 @@ std::vector<std::vector<cv::Point>> AreaFilter::getValidContours(std::vector<std
 
     std::vector<std::vector<cv::Point>> validContours;
 
-    static cv::Rect trackingBox = parseTrackingBox(TRACKING_BOX_FILE);
-    double roiArea = trackingBox.width * trackingBox.height;
+    static TrackingRect trackingBox = parseTrackingBox(TRACKING_BOX_FILE);
+    double roiArea = trackingBox.width() * trackingBox.height();
     for (auto contour : contours)
     {
         double prop = cv::contourArea(contour) / roiArea;
@@ -497,6 +497,7 @@ cv::Point getIndexFingerPosition(std::vector<ConvexityDefect> convexityDefects, 
 
 /**
  * Gets Hand Data from the contour
+ * 
  */
 HandData getHandDataFromContour(const std::vector<cv::Point> &contour, const cv::Mat &img = cv::Mat())
 {
@@ -612,8 +613,8 @@ HandData FastTracker::getHandData(const cv::Mat &image)
 {
 
     // slice only the region of interest (tracking box)
-    static cv::Rect trackingBox = parseTrackingBox(TRACKING_BOX_FILE);
-    cv::Mat roi = image(trackingBox);
+    static TrackingRect trackingBox = parseTrackingBox(TRACKING_BOX_FILE);
+    cv::Mat roi = trackingBox.cropImage(image);
     cv::Mat handMask = maskStrategy->makeHandMask(roi);
 
     std::vector<std::vector<cv::Point>> contours;
@@ -636,7 +637,15 @@ HandData FastTracker::getHandData(const cv::Mat &image)
         // cv::imshow("Hand Mask", handMask);
     }
 
-    return getHandDataFromContour(contour, roi);
+    HandData h =  getHandDataFromContour(contour, roi);
+
+    // invalidate the data if the index finger is not found in the top box
+    if (h.indexFingerPosition.x != -1 && h.indexFingerPosition.y > trackingBox.screenHeight())
+    {
+        return HandData{cv::Point(-1, -1), 0, false};
+    }else{
+        return h;
+    }
 }
 
 /**
