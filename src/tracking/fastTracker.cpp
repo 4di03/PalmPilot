@@ -413,7 +413,6 @@ std::vector<int> getFingertipPoints(const std::vector<cv::Point> &contour, doubl
  *
  * Works by finding the closest point on AB to the center of the circle,
  * and then checking if the distance from that point to the center is less than the radius of the circle
- * TODO: understand this math better.
  * @param A The start point of the line
  * @param B The end point of the line
  * @param circle The circle to check for intersection

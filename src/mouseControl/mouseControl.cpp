@@ -214,6 +214,7 @@ class Executor{
 
 };
 
+// TODO: make raisekeyboard actually bring up a keyboard GUI that can input keys.
 // TODO: improve smoothness (averaging or kalman filter)
 // TODO: reduce sensitivity of left click (smoothness may help)
 // TODO: improve pinky detection so that raise keyboard is more reliable

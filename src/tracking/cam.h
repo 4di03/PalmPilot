@@ -40,4 +40,3 @@ class VideoStream{
     }
 };
 
-// TODO: handle the case where camera cannot capture frames
