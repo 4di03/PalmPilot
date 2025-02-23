@@ -1,37 +1,29 @@
-#include <QApplication>
-#include <QWidget>
-#include <QPushButton>
-#include <QGridLayout>
-#include <QLineEdit>
-#include <QStyle>
-#include <Qthread>
-#pragma once
+#pragma once  // Prevents recursive inclusion
+
+#include <iostream>
+#include <GLFW/glfw3.h>
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+#include <thread>
+#include <atomic>
 
 /**
- * Virtual Keyboard GUI with listener for button clicks
+ * Virtual Keyboard Class using ImGui (Runs in a Separate Thread)
  */
-class VirtualKeyboard : public QWidget {
-    Q_OBJECT
+class VirtualKeyboard {
 public:
-   VirtualKeyboard(QWidget *parent = nullptr);
-};
+    VirtualKeyboard();
+    ~VirtualKeyboard();
 
-/**
- * QThread subclass to run the keyboard GUI on a separate thread
- */
-class KeyboardThread : public QThread {
-    Q_OBJECT
-    private:
-        VirtualKeyboard* keyboard;  
-        QApplication* app;
-    public:
+    void show();
+    void stop();
+    bool isRunning() const;
 
-        KeyboardThread(QApplication* app){
-            this->keyboard = new VirtualKeyboard();
-            this->app = app;
-        }
+private:
+    GLFWwindow* window;
+    std::atomic<bool> running;
+    std::thread keyboardThread;
 
-        void run();
-
-        ~KeyboardThread();
+    void runKeyboardLoop();
 };

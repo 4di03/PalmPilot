@@ -121,15 +121,14 @@ std::pair<int,int> getNewMouseLocation(std::pair<int,int> fingerLoc,std::pair<in
 
 
 /**
- * Raises a keyboard GUI on a separate thread
+ * Raises the ImGui keyboard GUI in a separate thread
  */
-KeyboardThread* raiseKeyboard() {
-    int argc = 0;
-    char *argv[] = {nullptr};
-    QApplication* app = new QApplication(argc, argv);
-    KeyboardThread *thread = new KeyboardThread(app);
-    thread->run();  // Starts the Qt GUI in a new thread
-    return thread;
+VirtualKeyboard* raiseKeyboard() {
+    VirtualKeyboard* keyboard = new VirtualKeyboard();
+    std::cout << "L127 keyboard init"<< std::endl;
+    keyboard->show();  // Starts the keyboard in a separate thread
+    std::cout << "L130 keyboard show" << std::endl;
+    return keyboard;
 }
 
 /**
@@ -182,7 +181,7 @@ class Executor{
         MouseController mc = MouseController(); // instance-specific mouse controller
         std::pair<int,int> frameDims; // dimensions of opencv frame on which finger location is determined
         std::pair<int,int> screenDims;  // dimensions of the screen on which the mouse is moved
-        KeyboardThread* keyboardThread = nullptr; // thread for the keyboard GUI
+        VirtualKeyboard* keyboard = nullptr; // thread for the keyboard GUI
     public:
         Executor(int frameWidth, int frameHeight, int screenWidth, int screenHeight){
             frameDims = std::pair<int,int>(frameWidth,frameHeight);
@@ -202,7 +201,7 @@ class Executor{
             if (data.numFingersRaised >= 5 && !state.isKeyboardRaised()) {
                 std::cout << "Raising keyboard..." << std::endl;
                 state.raiseKeyboard();
-                keyboardThread = raiseKeyboard();
+                keyboard = raiseKeyboard();
             } 
             else if (data.numFingersRaised == 0 && !state.isLeftClicked()) {
                 std::cout << "Left Clicking Mouse" << std::endl;
@@ -221,10 +220,8 @@ class Executor{
         }
         // lowers the keyboard by killing the qt thread for the keyboard widget and updating the state
         void lowerKeyboard(ControlState& state){
-            if (keyboardThread != nullptr) {
-                keyboardThread->quit();
-                keyboardThread->wait();
-                delete keyboardThread;
+            if (keyboard != nullptr) {
+                delete keyboard;
                 state.lowerKeyboard();
             }else{
                 std::cout << "Keyboard is not raised" << std::endl;
@@ -233,10 +230,8 @@ class Executor{
         }
 
         ~Executor(){
-            if (keyboardThread != nullptr) {
-                keyboardThread->quit();
-                keyboardThread->wait();
-                delete keyboardThread;
+            if (keyboard != nullptr) {
+                delete keyboard;
             }
             
         }
