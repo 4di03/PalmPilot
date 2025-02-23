@@ -1,5 +1,5 @@
 #include <opencv2/opencv.hpp>
-#define K 20 // number of points used to make vectors to find k curvature from the vertices of the convex hull
+#define K_CURVATURE_POINTS 20 // number of points used to make vectors to find k curvature from the vertices of the convex hull
 /**
  * Data used to measure the local curvature of a contour at a given point by taking vector1 (start to point) and vector2 (point to end).
  * The K-curvature is the angle between vector1 and vector2.

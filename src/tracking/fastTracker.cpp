@@ -375,7 +375,7 @@ std::vector<int> getFingertipPoints(const std::vector<cv::Point> &contour, doubl
         result.push_back(getMostCentralPoint(pointGroup.second).second);
     }
 
-    // find nearby points (within K) to hull points that have minimum y-coordinate (highest up) (these are the fingertips)
+    // find nearby points (within K_CURVATURE_POINTS) to hull points that have minimum y-coordinate (highest up) (these are the fingertips)
 
     std::set<int> fingertips; // Ordered set for efficient nearest neighbor lookup
 
@@ -385,8 +385,8 @@ std::vector<int> getFingertipPoints(const std::vector<cv::Point> &contour, doubl
         int minIdx = curIdx;
 
         // Find nearby point within [curIdx - K, curIdx + K] that has maximum y-coordinate
-        int lower = std::max(0, curIdx - K);
-        int upper = std::min((int)contour.size(), curIdx + K + 1);
+        int lower = std::max(0, curIdx - K_CURVATURE_POINTS);
+        int upper = std::min((int)contour.size(), curIdx + K_CURVATURE_POINTS + 1);
         for (int j = lower; j < upper; j++)
         {
             if (contour[j].y < contour[minIdx].y)
@@ -396,8 +396,8 @@ std::vector<int> getFingertipPoints(const std::vector<cv::Point> &contour, doubl
         }
 
         // Check if any existing fingertip is within range K
-        auto it = fingertips.lower_bound(minIdx - K);
-        if (it != fingertips.end() && *it <= minIdx + K)
+        auto it = fingertips.lower_bound(minIdx - K_CURVATURE_POINTS);
+        if (it != fingertips.end() && *it <= minIdx + K_CURVATURE_POINTS)
         {
             continue; // Skip adding if a nearby point already exists
         }
@@ -553,7 +553,7 @@ HandData getHandDataFromContour(const std::vector<cv::Point> &contour, const cv:
             cv::line(KCurvatureImage, kCurvature.start, kCurvature.point, cv::Scalar(0, 255, 0), 2);
             cv::line(KCurvatureImage, kCurvature.end, kCurvature.point, cv::Scalar(0, 255, 0), 2);
         }
-        cv::imshow("K Curvature", KCurvatureImage);
+        cv::imshow("K_CURVATURE_POINTS Curvature", KCurvatureImage);
     }
 
     std::vector<cv::Point> fingertipPoints;

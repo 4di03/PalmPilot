@@ -9,7 +9,12 @@ The palm detection relies on distinguishing the color of your palm, so please us
 
 ### Local Setup
 
+Dependencies:
+- C++ 14
+- OpenCv
+- QT
 Quick make and run command:
+
 ```
 cd build && make && cd .. && build/fast_tracking
 ```

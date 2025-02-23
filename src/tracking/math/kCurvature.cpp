@@ -6,9 +6,9 @@ std::vector<KCurvatureData> getKCurvatureData(const std::vector<cv::Point>& cont
     std::vector<KCurvatureData> kCurvatureData;
     int n = contour.size();
     for (auto i : hullIndices){
-        cv::Point start = contour[(i - K + n) % n];
+        cv::Point start = contour[(i - K_CURVATURE_POINTS + n) % n];
         cv::Point point = contour[i];
-        cv::Point end = contour[(i + K) % n];
+        cv::Point end = contour[(i + K_CURVATURE_POINTS) % n];
         kCurvatureData.push_back(KCurvatureData{start, point, end});
     }
     return kCurvatureData;

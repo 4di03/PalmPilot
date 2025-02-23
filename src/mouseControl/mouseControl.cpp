@@ -11,6 +11,7 @@
 #include "cam.h"
 #include "fastTracker.h"
 #include "calibration.h"
+#include "virtualKeyboard.h"
 #include <chrono>
 #include <thread>
 
@@ -120,10 +121,15 @@ std::pair<int,int> getNewMouseLocation(std::pair<int,int> fingerLoc,std::pair<in
 
 
 /**
- * Raises the keyboard
+ * Raises a keyboard GUI on a separate thread
  */
-void raiseKeyboard(){
-    std::cout << "Keyboard Raised" << std::endl;
+KeyboardThread* raiseKeyboard() {
+    int argc = 0;
+    char *argv[] = {nullptr};
+    QApplication* app = new QApplication(argc, argv);
+    KeyboardThread *thread = new KeyboardThread(app);
+    thread->run();  // Starts the Qt GUI in a new thread
+    return thread;
 }
 
 /**
@@ -176,6 +182,7 @@ class Executor{
         MouseController mc = MouseController(); // instance-specific mouse controller
         std::pair<int,int> frameDims; // dimensions of opencv frame on which finger location is determined
         std::pair<int,int> screenDims;  // dimensions of the screen on which the mouse is moved
+        KeyboardThread* keyboardThread = nullptr; // thread for the keyboard GUI
     public:
         Executor(int frameWidth, int frameHeight, int screenWidth, int screenHeight){
             frameDims = std::pair<int,int>(frameWidth,frameHeight);
@@ -195,6 +202,7 @@ class Executor{
             if (data.numFingersRaised >= 5 && !state.isKeyboardRaised()) {
                 std::cout << "Raising keyboard..." << std::endl;
                 state.raiseKeyboard();
+                keyboardThread = raiseKeyboard();
             } 
             else if (data.numFingersRaised == 0 && !state.isLeftClicked()) {
                 std::cout << "Left Clicking Mouse" << std::endl;
@@ -210,7 +218,28 @@ class Executor{
                 mc.moveMouseToAbsolute(newMouseLocation.first, newMouseLocation.second);
                 state.moveMouse();
             }   
-        }          
+        }
+        // lowers the keyboard by killing the qt thread for the keyboard widget and updating the state
+        void lowerKeyboard(ControlState& state){
+            if (keyboardThread != nullptr) {
+                keyboardThread->quit();
+                keyboardThread->wait();
+                delete keyboardThread;
+                state.lowerKeyboard();
+            }else{
+                std::cout << "Keyboard is not raised" << std::endl;
+                exit(1);
+            }
+        }
+
+        ~Executor(){
+            if (keyboardThread != nullptr) {
+                keyboardThread->quit();
+                keyboardThread->wait();
+                delete keyboardThread;
+            }
+            
+        }
 
 };
 
