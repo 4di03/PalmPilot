@@ -45,16 +45,13 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 # TODO: convert library header imports to <> instead of ""
 #create a library for tracking
 add_library(tracking src/tracking/fastTracker.cpp src/tracking/cam.h src/tracking/handTracking.cpp src/tracking/math/convexityDefects.cpp src/tracking/removeFace.cpp src/tracking/backgroundSubtraction.cpp src/tracking/math/kCurvature.cpp src/tracking/math/maxInscribingCircle.cpp src/tracking/calibration.cpp src/tracking/constants.h)
-add_library(gui src/qtComponents/virtualKeyboard.cpp)
 
 # Add ImGui as a static library
 add_library(imgui STATIC ${IMGUI_SOURCES})
-
+target_link_libraries(imgui glfw "-framework OpenGL")
 MESSAGE("CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
 
-target_include_directories(gui PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/qtComponents)
 target_include_directories(tracking PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/tracking)
-target_link_libraries(gui imgui glfw "-framework OpenGL")
 target_link_libraries(tracking ${OpenCV_LIBS})
 
 # Add the source file
@@ -67,7 +64,7 @@ add_executable(check_metal src/tracking/metalTest.cpp)
 add_executable(calibration src/tracking/runCalibration.cpp)
 
 # Link macOS frameworks
-target_link_libraries(mouseControl PRIVATE "-framework CoreGraphics" "-framework CoreFoundation" tracking gui)
+target_link_libraries(mouseControl PRIVATE "-framework CoreGraphics" "-framework CoreFoundation" tracking imgui)
 target_link_libraries(webcam_stream PRIVATE tracking)
 target_link_libraries(op_tracking  PRIVATE tracking)
 target_link_libraries(fast_tracking  PRIVATE tracking)

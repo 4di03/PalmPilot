@@ -11,8 +11,12 @@
 #include "cam.h"
 #include "fastTracker.h"
 #include "calibration.h"
-#include "virtualKeyboard.h"
 #include <chrono>
+#include <thread>
+#include <GLFW/glfw3.h>
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 #include <thread>
 
 
@@ -120,27 +124,18 @@ std::pair<int,int> getNewMouseLocation(std::pair<int,int> fingerLoc,std::pair<in
 }
 
 
-/**
- * Raises the ImGui keyboard GUI in a separate thread
- */
-VirtualKeyboard* raiseKeyboard() {
-    VirtualKeyboard* keyboard = new VirtualKeyboard();
-    std::cout << "L127 keyboard init"<< std::endl;
-    keyboard->show();  // Starts the keyboard in a separate thread
-    std::cout << "L130 keyboard show" << std::endl;
-    return keyboard;
-}
 
 /**
  * State of FSM for controlling the mouse and keyboard
  */
 class ControlState{
     private:
-        bool keyboardRaised = false;
         bool leftClicked = false;
+        bool showKeyboard = false; // shared across threads to manage keyboard gui
     public:
+
         void reset(){
-            keyboardRaised = false;
+            showKeyboard = false;
             leftClicked = false;
         }
 
@@ -150,7 +145,7 @@ class ControlState{
         }
 
         void raiseKeyboard(){
-            keyboardRaised = true;
+            showKeyboard = true;
             leftClicked = false;
         }
 
@@ -159,11 +154,11 @@ class ControlState{
         }
 
         void lowerKeyboard(){
-            keyboardRaised = false;
+            showKeyboard = false;
         }
 
         bool isKeyboardRaised(){
-            return keyboardRaised;
+            return showKeyboard;
         }
 
         bool isLeftClicked(){
@@ -181,7 +176,6 @@ class Executor{
         MouseController mc = MouseController(); // instance-specific mouse controller
         std::pair<int,int> frameDims; // dimensions of opencv frame on which finger location is determined
         std::pair<int,int> screenDims;  // dimensions of the screen on which the mouse is moved
-        VirtualKeyboard* keyboard = nullptr; // thread for the keyboard GUI
     public:
         Executor(int frameWidth, int frameHeight, int screenWidth, int screenHeight){
             frameDims = std::pair<int,int>(frameWidth,frameHeight);
@@ -201,7 +195,6 @@ class Executor{
             if (data.numFingersRaised >= 5 && !state.isKeyboardRaised()) {
                 std::cout << "Raising keyboard..." << std::endl;
                 state.raiseKeyboard();
-                keyboard = raiseKeyboard();
             } 
             else if (data.numFingersRaised == 0 && !state.isLeftClicked()) {
                 std::cout << "Left Clicking Mouse" << std::endl;
@@ -218,64 +211,220 @@ class Executor{
                 state.moveMouse();
             }   
         }
-        // lowers the keyboard by killing the qt thread for the keyboard widget and updating the state
-        void lowerKeyboard(ControlState& state){
-            if (keyboard != nullptr) {
-                delete keyboard;
-                state.lowerKeyboard();
-            }else{
-                std::cout << "Keyboard is not raised" << std::endl;
-                exit(1);
-            }
-        }
 
-        ~Executor(){
-            if (keyboard != nullptr) {
-                delete keyboard;
-            }
-            
-        }
+
 
 };
 
+class HandTrackingApplication {
+    private:
+        VideoStream vs;
+        HandTracker* tracker;
+        Executor e;
+    public:
+    HandTrackingApplication(VideoStream vs, HandTracker* tracker, Executor e, int targetFps)
+            : vs(vs), tracker(tracker), e(e) {}
+
+        /**
+         * Retrieves a frame, processes it, and updates the mouse and keyboard state.
+         * @param state The state of the mouse and keyboard
+         */
+        void runStep(ControlState& state) {
+
+            cv::Mat frame = vs.getFrame();
+            HandData data = tracker->getHandData(frame);
+            e.execute(data,state);
+
+            // optional display
+            displayHandData(frame,data);
+            cv::imshow("Hand Tracking", frame);
+            cv::waitKey(1);
+
+        }
+};
+
+/**
+ * Application class that encapsulates the hand tracking application and the virtual keyboard GUI
+ */
+class Application{
+    private:
+        HandTrackingApplication handTrackingApp;
+        ControlState state;
+        GLFWwindow* window;
+        const int FRAME_TIME_MS;
+
+    public:
+
+        void initKeyboard() {
+            if (!glfwInit()) {
+                std::cerr << "GLFW initialization failed" << std::endl;
+                return;
+            }
+        
+            window = glfwCreateWindow(500, 300, "Virtual Keyboard", NULL, NULL);
+            if (!window) {
+                std::cerr << "Failed to create GLFW window\n";
+                glfwTerminate();
+                return;
+            }
+        
+            glfwMakeContextCurrent(window);
+            glfwSwapInterval(1);
+        
+            IMGUI_CHECKVERSION();
+            ImGui::CreateContext();
+            if (!ImGui_ImplGlfw_InitForOpenGL(window, true)) {  // ✅ Ensure GLFW backend initializes properly
+                std::cerr << "ImGui GLFW Init failed!" << std::endl;
+                return;
+            }
+            if (!ImGui_ImplOpenGL3_Init("#version 130")) {  // ✅ Ensure OpenGL backend initializes properly
+                std::cerr << "ImGui OpenGL3 Init failed!" << std::endl;
+                return;
+            }
+        
+            glfwHideWindow(window);  // ✅ Start hidden
+        }
+
+        Application(HandTrackingApplication handTrackingApp, int targetFps = 10) : handTrackingApp(handTrackingApp), FRAME_TIME_MS(1000 / targetFps) {
+            initKeyboard(); 
+        }
+
+
+ 
+
+        void cleanupKeyboard(){
+            if (window) {
+                glfwDestroyWindow(window);
+                window = nullptr;
+            }
+        
+            ImGui_ImplOpenGL3_Shutdown();
+            ImGui_ImplGlfw_Shutdown();
+            ImGui::DestroyContext();
+            glfwTerminate();
+        }
+
+        /**
+         * Renders the virtual keyboard GUI
+         */
+        void renderKeyboard(){
+            if (!window) {
+                std:: cerr << "Window is null" << std::endl;
+                exit(1);
+            }
+
+            glfwShowWindow(window); // unhides the window if it was hidden
+
+            glfwPollEvents();
+            ImGui_ImplOpenGL3_NewFrame();
+            ImGui_ImplGlfw_NewFrame();
+            ImGui::NewFrame();
+            ImGui::Begin("Virtual Keyboard");
+            static std::string text;
+            const char* keys[4][10] = {
+                {"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"},
+                {"Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"},
+                {"A", "S", "D", "F", "G", "H", "J", "K", "L", "Back"},
+                {"Z", "X", "C", "V", "B", "N", "M", "Space", "Enter", "Clear"}
+            };
+
+            for (int i = 0; i < 4; i++) {
+                for (int j = 0; j < 10; j++) {
+                    if (ImGui::Button(keys[i][j], ImVec2(40, 40))) {
+                        if (strcmp(keys[i][j], "Back") == 0 && !text.empty()) {
+                            text.pop_back();
+                        } else if (strcmp(keys[i][j], "Clear") == 0) {
+                            text.clear();
+                        } else if (strcmp(keys[i][j], "Space") == 0) {
+                            text += " ";
+                        } else if (strcmp(keys[i][j], "Enter") == 0) {
+                            text += "\n";
+                        } else {
+                            text += keys[i][j];
+                        }
+                    }
+                    ImGui::SameLine();
+                }
+                ImGui::NewLine();
+            }
+
+            ImGui::Text("Output: %s", text.c_str());
+            ImGui::End();
+
+        ImGui::Render();
+        glClear(GL_COLOR_BUFFER_BIT);
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+        glfwSwapBuffers(window);
+
+        }
+
+        
+        void hideKeyboard() {
+            glfwHideWindow(window);
+        }
+        void run() {
+
+        bool keyboardClosed = true;
+        while (true) {
+            auto frameStart = std::chrono::steady_clock::now();  // Start time
+
+            // update the hand tracking state
+            handTrackingApp.runStep(state);
+
+            
+            // render the keyboard if needed
+            if (state.isKeyboardRaised() && !glfwWindowShouldClose(window)) {
+                renderKeyboard();
+            }else{// make sure we only close it once for each time it is opened
+                hideKeyboard();
+            }
+
+
+
+            // Calculate time taken for processing
+            auto frameEnd = std::chrono::steady_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart);
+
+            // Sleep only for the remaining time to maintain consistent FPS
+            auto sleepTime = std::chrono::milliseconds(FRAME_TIME_MS) - elapsed;
+            if (sleepTime.count() > 0) {
+                std::this_thread::sleep_for(sleepTime);
+            }
+
+        }
+        cleanupKeyboard();
+
+
+        }
+        ~Application(){
+            cleanupKeyboard();
+        }
+};      
+
+
+
 // TODO: make raisekeyboard actually bring up a keyboard GUI that can input keys.
-// TODO: improve smoothness (averaging or kalman filter)
+// make keybaord not blocack
+// TODO: improve smoothness (averaging or kalman filter) (paritucallry with preceise clicks, lot of jitter on finger tips)
 // TODO: reduce sensitivity of left click (smoothness may help)
 // TODO: improve pinky detection so that raise keyboard is more reliable
 // TODO: move this to a proper main file
 // TODO: move all the components of the main function to a composed application class and encapsulate it into a simple run function
-int main() {
+
+/**
+ * Main function which runs gui in main thread and mouse control in the same  thread (as gui must be in main thread)
+ */
+int main(){
     VideoStream vs(0);
     TrackingRect trackingBox = parseTrackingBox(TRACKING_BOX_FILE);
     HandTracker* tracker = initBestTracker();
     Executor e(trackingBox.screenWidth(), trackingBox.screenHeight(), SCREEN_WIDTH, SCREEN_HEIGHT);
 
+    
+
     int targetFps = 10;
-    const int FRAME_TIME_MS = 1000/targetFps;  // Time in milliseconds for each frame
-    ControlState state = ControlState();
-    while (true) {
-        auto frameStart = std::chrono::steady_clock::now();  // Start time
-
-        cv::Mat frame = vs.getFrame();
-        HandData data = tracker->getHandData(frame);
-        e.execute(data,state);
-
-        // optional display
-        displayHandData(frame,data);
-        cv::imshow("Hand Tracking", frame);
-        cv::waitKey(1);
-
-        // Calculate time taken for processing
-        auto frameEnd = std::chrono::steady_clock::now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart);
-
-
-
-        // Sleep only for the remaining time to maintain consistent FPS
-        auto sleepTime = std::chrono::milliseconds(FRAME_TIME_MS) - elapsed;
-        if (sleepTime.count() > 0) {
-            std::this_thread::sleep_for(sleepTime);
-        }
-    }
+    HandTrackingApplication trackingApp(vs, tracker, e, targetFps);
+    Application app(trackingApp);
+    app.run();
     return 0;
 }
