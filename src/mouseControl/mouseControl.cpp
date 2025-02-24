@@ -134,8 +134,7 @@ class ControlState{
         bool showKeyboard = false; // shared across threads to manage keyboard gui
     public:
 
-        void reset(){
-            showKeyboard = false;
+        void resetClickState(){
             leftClicked = false;
         }
 
@@ -154,6 +153,7 @@ class ControlState{
         }
 
         void lowerKeyboard(){
+            printf("Lowering keyboard...\n");
             showKeyboard = false;
         }
 
@@ -188,7 +188,7 @@ class Executor{
          */
         void execute(const HandData& data, ControlState& state) {
             if (!data.handDetected) {
-                state.reset();
+                state.resetClickState(); // we can allow left click again if hand is not detected
                 return;
             }
 
