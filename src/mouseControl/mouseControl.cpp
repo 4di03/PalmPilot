@@ -18,12 +18,18 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include <thread>
-
+#define NROWS 4 // number of rows in the virtual keyboard
+#define NCOLS 10 // number of columns in the virtual keyboard
+#define KEYBOARD_WIDTH 800 // width of the virtual keyboard
+#define KEYBOARD_HEIGHT 600 // height of the virtual keyboard
 
 // TODO: dynamically get the screen dimensions
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080 
-
+static void glfw_error_callback(int error, const char* description)
+{
+    fprintf(stderr, "GLFW Error %d: %s\n", error, description);
+}
 CGPoint getMouseLocation() {
     CGEventRef event = CGEventCreate(NULL);
     CGPoint cursor = CGEventGetLocation(event);
@@ -168,12 +174,17 @@ class ControlState{
 
 };
 
+class KeyboardController{
+
+}
+
 /**
  * Executes the mouse movement, clicks, and keyboard actions and click given hand location
  */
 class Executor{
     private:
         MouseController mc = MouseController(); // instance-specific mouse controller
+
         std::pair<int,int> frameDims; // dimensions of opencv frame on which finger location is determined
         std::pair<int,int> screenDims;  // dimensions of the screen on which the mouse is moved
     public:
@@ -183,7 +194,7 @@ class Executor{
         }
 
         /**
-         * Executes the mouse movement, clicks, and keyboard actions and click given hand location
+         * Executes the mouse movement, clicks, and keyboard raising and click given hand location
          * Updates the state of the control
          */
         void execute(const HandData& data, ControlState& state) {
@@ -216,6 +227,9 @@ class Executor{
 
 };
 
+//
+
+
 class HandTrackingApplication {
     private:
         VideoStream vs;
@@ -241,6 +255,10 @@ class HandTrackingApplication {
             cv::waitKey(1);
 
         }
+
+    executeKeyboardCommand(std::string key){
+
+    }
 };
 
 /**
@@ -254,35 +272,74 @@ class Application{
         const int FRAME_TIME_MS;
 
     public:
-
+        // code taken from imgui example
         void initKeyboard() {
-            if (!glfwInit()) {
-                std::cerr << "GLFW initialization failed" << std::endl;
-                return;
+            glfwSetErrorCallback(glfw_error_callback);
+            if (!glfwInit()){
+                std::cerr << "Failed to initialize GLFW" << std::endl;
+                exit(1);
             }
         
-            window = glfwCreateWindow(500, 300, "Virtual Keyboard", NULL, NULL);
-            if (!window) {
-                std::cerr << "Failed to create GLFW window\n";
+            // Decide GL+GLSL versions
+        #if defined(IMGUI_IMPL_OPENGL_ES2)
+            // GL ES 2.0 + GLSL 100 (WebGL 1.0)
+            const char* glsl_version = "#version 100";
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 2);
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+            glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+        #elif defined(IMGUI_IMPL_OPENGL_ES3)
+            // GL ES 3.0 + GLSL 300 es (WebGL 2.0)
+            const char* glsl_version = "#version 300 es";
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+            glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API);
+        #elif defined(__APPLE__)
+            // GL 3.2 + GLSL 150
+            const char* glsl_version = "#version 150";
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+            glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+            glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // Required on Mac
+        #else
+            // GL 3.0 + GLSL 130
+            const char* glsl_version = "#version 130";
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+            glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+            //glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);  // 3.2+ only
+            //glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);            // 3.0+ only
+        #endif
+        
+            // Create window with graphics context
+            window = glfwCreateWindow(KEYBOARD_WIDTH, KEYBOARD_HEIGHT + 10, "Keyboard", nullptr, nullptr);
+            if (window == nullptr){
+                std::cerr << "Failed to create GLFW window" << std::endl;
                 glfwTerminate();
-                return;
+                exit(1);
             }
-        
             glfwMakeContextCurrent(window);
-            glfwSwapInterval(1);
+            glfwSwapInterval(1); // Enable vsync
         
+            // Setup Dear ImGui context
             IMGUI_CHECKVERSION();
             ImGui::CreateContext();
-            if (!ImGui_ImplGlfw_InitForOpenGL(window, true)) {  // ✅ Ensure GLFW backend initializes properly
-                std::cerr << "ImGui GLFW Init failed!" << std::endl;
-                return;
-            }
-            if (!ImGui_ImplOpenGL3_Init("#version 130")) {  // ✅ Ensure OpenGL backend initializes properly
-                std::cerr << "ImGui OpenGL3 Init failed!" << std::endl;
-                return;
-            }
+
+            // Setup Dear ImGui style
+            ImGui::StyleColorsDark();
+            //ImGui::StyleColorsLight();
         
-            glfwHideWindow(window);  // ✅ Start hidden
+            // Setup Platform/Renderer backends
+            ImGui_ImplGlfw_InitForOpenGL(window, true);
+        #ifdef __EMSCRIPTEN__
+            ImGui_ImplGlfw_InstallEmscriptenCallbacks(window, "#canvas");
+        #endif
+            ImGui_ImplOpenGL3_Init(glsl_version);
+        
+            // Our state
+            bool show_demo_window = true;
+            bool show_another_window = false;
+            ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+        
+            hideKeyboard(); // hide the keyboard initially
         }
 
         Application(HandTrackingApplication handTrackingApp, int targetFps = 10) : handTrackingApp(handTrackingApp), FRAME_TIME_MS(1000 / targetFps) {
@@ -293,14 +350,16 @@ class Application{
  
 
         void cleanupKeyboard(){
+
+            ImGui_ImplOpenGL3_Shutdown();
+            ImGui_ImplGlfw_Shutdown();
+            ImGui::DestroyContext();
             if (window) {
                 glfwDestroyWindow(window);
                 window = nullptr;
             }
         
-            ImGui_ImplOpenGL3_Shutdown();
-            ImGui_ImplGlfw_Shutdown();
-            ImGui::DestroyContext();
+
             glfwTerminate();
         }
 
@@ -315,22 +374,36 @@ class Application{
 
             glfwShowWindow(window); // unhides the window if it was hidden
 
+
+
+
             glfwPollEvents();
             ImGui_ImplOpenGL3_NewFrame();
             ImGui_ImplGlfw_NewFrame();
             ImGui::NewFrame();
-            ImGui::Begin("Virtual Keyboard");
+
+            // begin but remove padding
+            ImGui::SetNextWindowPos(ImVec2(0, 0));
+            ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
+            ImGui::Begin("Keyboard", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove);
+            
             static std::string text;
-            const char* keys[4][10] = {
+            const char* keys[NROWS][NCOLS] = {
                 {"1", "2", "3", "4", "5", "6", "7", "8", "9", "0"},
                 {"Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P"},
                 {"A", "S", "D", "F", "G", "H", "J", "K", "L", "Back"},
                 {"Z", "X", "C", "V", "B", "N", "M", "Space", "Enter", "Clear"}
             };
 
-            for (int i = 0; i < 4; i++) {
-                for (int j = 0; j < 10; j++) {
-                    if (ImGui::Button(keys[i][j], ImVec2(40, 40))) {
+            int frameWidth= KEYBOARD_WIDTH;
+            int frameHeight = KEYBOARD_HEIGHT;
+
+            float buttonWidth = frameWidth / NCOLS;
+            float buttonHeight = frameHeight / (NROWS );
+
+            for (int i = 0; i < NROWS; i++) {
+                for (int j = 0; j < NCOLS; j++) {
+                    if (ImGui::Button(keys[i][j], ImVec2(buttonWidth, buttonHeight))) {
                         if (strcmp(keys[i][j], "Back") == 0 && !text.empty()) {
                             text.pop_back();
                         } else if (strcmp(keys[i][j], "Clear") == 0) {
@@ -348,13 +421,12 @@ class Application{
                 ImGui::NewLine();
             }
 
-            ImGui::Text("Output: %s", text.c_str());
             ImGui::End();
 
-        ImGui::Render();
-        glClear(GL_COLOR_BUFFER_BIT);
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        glfwSwapBuffers(window);
+            ImGui::Render();
+            glClear(GL_COLOR_BUFFER_BIT);
+            ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+            glfwSwapBuffers(window);
 
         }
 
@@ -374,8 +446,10 @@ class Application{
             
             // render the keyboard if needed
             if (state.isKeyboardRaised() && !glfwWindowShouldClose(window)) {
+                printf("Rendering keyboard...\n");
                 renderKeyboard();
             }else{// make sure we only close it once for each time it is opened
+                printf("Hiding keyboard...\n");
                 hideKeyboard();
             }
 
@@ -404,6 +478,7 @@ class Application{
 
 
 // TODO: make raisekeyboard actually bring up a keyboard GUI that can input keys.
+// make keyboard come back after closing out
 // make keybaord not blocack
 // TODO: improve smoothness (averaging or kalman filter) (paritucallry with preceise clicks, lot of jitter on finger tips)
 // TODO: reduce sensitivity of left click (smoothness may help)

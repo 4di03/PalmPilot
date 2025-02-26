@@ -19,6 +19,10 @@ include_directories(/usr/local/Cellar/glfw/3.4/include)
 
 set(IMGUI_LOC /Users/adithyapalle/libs/imgui)
 
+#silence opengl deprecation warnings
+add_definitions(-DGL_SILENCE_DEPRECATION)
+
+
 
 # Include Dear ImGui headers
 include_directories(${IMGUI_LOC} ${IMGUI_LOC}/backends)
