@@ -59,7 +59,7 @@ target_include_directories(tracking PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/track
 target_link_libraries(tracking ${OpenCV_LIBS})
 
 # Add the source file
-add_executable(mouseControl src/mouseControl/mouseControl.cpp) 
+add_executable(mouseControl src/mouseControl/mouseControl.cpp src/mouseControl/keyboardView.cpp src/mouseControl/event.cpp src/mouseControl/controlState.cpp) 
 add_executable(webcam_stream src/tracking/cam.cpp )
 add_executable(op_tracking src/tracking/openposeTracker.cpp)
 add_executable(fast_tracking src/tracking/runFastTracking.cpp)
