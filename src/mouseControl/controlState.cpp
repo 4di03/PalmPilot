@@ -5,9 +5,11 @@
 
 
 ControlState::ControlState(int frameWidth, int frameHeight, int screenWidth, int screenHeight, KeyboardView& view): view(view){
+    std::cout << "L10   " << std::endl;
 
     frameDims = std::pair<int,int>(frameWidth,frameHeight);
     screenDims = std::pair<int,int>(screenWidth,screenHeight);
+    this->view = view;
 }
 
 void ControlState::resetClickState(){
@@ -44,11 +46,11 @@ bool ControlState::isLeftClicked(){
 
 void ControlState::createHideKeyboardEvent(){
     this->lowerKeyboard();
-    eventQueue.push(new HideKeyboardEvent(view));
+    eventQueue.push(std::make_unique<HideKeyboardEvent>(view));
 }
 
 void ControlState::createKeyPressEvent(std::string key){
-    eventQueue.push(new KeyPressEvent(key));
+    eventQueue.push(std::make_unique<KeyPressEvent>(key));
 }
 /**
  * Executes all events in the event queue
@@ -73,7 +75,7 @@ void ControlState::updateAndExecute(const HandData& data){
 void ControlState::updateState(const HandData& data) {
     if (!data.handDetected) {
         this->resetClickState(); // we can allow left click again if hand is not detected
-        this->eventQueue.push(new ReleaseLeftClickEvent());
+        this->eventQueue.push(std::make_unique<ReleaseLeftClickEvent>());
         return;
     }
 
@@ -84,14 +86,14 @@ void ControlState::updateState(const HandData& data) {
     else if (data.numFingersRaised == 0 && !this->isLeftClicked()) {
         std::cout << "Left Clicking Mouse" << std::endl;
         this->clickMouse();
-        this->eventQueue.push(new LeftClickEvent());
+        this->eventQueue.push(std::make_unique<LeftClickEvent>());
     } 
     else if (data.indexFingerPosition.x != -1) {  
         int x = data.indexFingerPosition.x;
         int y = data.indexFingerPosition.y;
         std::pair<int,int> newMouseLocation = getNewMouseLocation(std::pair<int,int>(x,y),frameDims,screenDims);
         this->moveMouse();
-        this->eventQueue.push(new MouseMoveEvent(newMouseLocation.first, newMouseLocation.second));
+        this->eventQueue.push(std::make_unique<MouseMoveEvent>(newMouseLocation.first, newMouseLocation.second));
     }
     
     

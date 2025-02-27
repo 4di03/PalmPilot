@@ -1,6 +1,7 @@
 #pragma once
 #include <queue>
 #include "keyboardView.h"
+#include <memory>
 
 
 class Event;  // Forward declaration
@@ -29,7 +30,7 @@ class ControlState{
         void updateState(const HandData& data);
     public:
 
-        std::queue<Event*> eventQueue; // queue of events to be executed
+        std::queue<std::unique_ptr<Event>> eventQueue;
 
         ControlState(int frameWidth, int frameHeight, int screenWidth, int screenHeight, KeyboardView& view);
 

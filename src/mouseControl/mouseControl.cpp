@@ -43,36 +43,13 @@
 
 
 
-
-
-/**
- * Executes the mouse movement, clicks, and keyboard actions and click given hand location
- */
-class Executor{
-    private:
-        std::pair<int,int> frameDims; // dimensions of opencv frame on which finger location is determined
-        std::pair<int,int> screenDims;  // dimensions of the screen on which the mouse is moved
-    public:
-        Executor(int frameWidth, int frameHeight, int screenWidth, int screenHeight){
-            frameDims = std::pair<int,int>(frameWidth,frameHeight);
-            screenDims = std::pair<int,int>(screenWidth,screenHeight);
-        }
-
-
-
-
-};
-
-
-
 class HandTrackingApplication {
     private:
         VideoStream vs;
         HandTracker* tracker;
-        Executor e;
     public:
-    HandTrackingApplication(VideoStream vs, HandTracker* tracker, Executor e, int targetFps)
-            : vs(vs), tracker(tracker), e(e) {}
+    HandTrackingApplication(VideoStream vs, HandTracker* tracker int targetFps)
+            : vs(vs), tracker(tracker) {}
 
         /**
          * Retrieves a frame, processes it, and updates the mouse and keyboard state ,and executes the events
@@ -162,12 +139,11 @@ int main(){
     VideoStream vs(0);
     TrackingRect trackingBox = parseTrackingBox(TRACKING_BOX_FILE);
     HandTracker* tracker = initBestTracker();
-    Executor e(trackingBox.screenWidth(), trackingBox.screenHeight(), SCREEN_WIDTH, SCREEN_HEIGHT);
 
     
 
     int targetFps = 10;
-    HandTrackingApplication trackingApp(vs, tracker, e, targetFps);
+    HandTrackingApplication trackingApp(vs, tracker, targetFps);
     KeyboardView view = KeyboardView();
     std::cout << "Keyboard view created" << std::endl;
     ControlState state(trackingBox.screenWidth(), trackingBox.screenHeight(), SCREEN_WIDTH, SCREEN_HEIGHT, view);
