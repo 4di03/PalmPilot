@@ -57,7 +57,7 @@ void ControlState::createKeyPressEvent(std::string key){
  */
 void ControlState::executeEvents() {
     while (!eventQueue.empty()) {
-        Event* e = eventQueue.front();
+        Event* e = eventQueue.front().get();
         e->execute();
         eventQueue.pop();
     }
@@ -99,6 +99,6 @@ void ControlState::updateState(const HandData& data) {
     
 
     if (this->isKeyboardRaised()){
-        this->eventQueue.push(new RenderKeyboardEvent(view, *this));
+        this->eventQueue.push(std::make_unique<RenderKeyboardEvent>(view, *this));
     }
 }

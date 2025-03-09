@@ -10,6 +10,8 @@ std::pair<int,int> getNewMouseLocation(std::pair<int,int> fingerLoc,std::pair<in
 class Event {
     public:
         virtual void execute() = 0;
+        virtual ~Event() {}  // Virtual destructor (fixes warning)
+
 };
 
 

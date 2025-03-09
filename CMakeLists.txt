@@ -10,6 +10,8 @@ set(CMAKE_CXX_STANDARD 14)
 project(PalmPilot)
 
 # opencv setup
+set(OpenCV_DIR "/Users/adithyapalle/libs/installs/lib/cmake/opencv4") # You can remove this line if you installed opencv with homebrew , or change it if you installed it elsewhere
+
 find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 

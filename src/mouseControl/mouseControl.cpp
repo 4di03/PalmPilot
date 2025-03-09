@@ -48,7 +48,7 @@ class HandTrackingApplication {
         VideoStream vs;
         HandTracker* tracker;
     public:
-    HandTrackingApplication(VideoStream vs, HandTracker* tracker int targetFps)
+    HandTrackingApplication(VideoStream vs, HandTracker* tracker, int targetFps)
             : vs(vs), tracker(tracker) {}
 
         /**
