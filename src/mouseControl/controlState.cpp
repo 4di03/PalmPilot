@@ -58,7 +58,7 @@ void ControlState::createKeyPressEvent(std::string key){
 void ControlState::executeEvents() {
     while (!eventQueue.empty()) {
         Event* e = eventQueue.front().get();
-        e->execute();
+        e->execute(); 
         eventQueue.pop();
     }
 }
@@ -69,13 +69,13 @@ void ControlState::executeEvents() {
  */
 void ControlState::updateAndExecute(const HandData& data){
     updateState(data);
-    this->executeEvents();
+    this->executeEvents(); 
 }
 
 void ControlState::updateState(const HandData& data) {
     if (!data.handDetected) {
         this->resetClickState(); // we can allow left click again if hand is not detected
-        this->eventQueue.push(std::make_unique<ReleaseLeftClickEvent>());
+        // TODO: once dragging is impletned make sure there is a way to release the drag if hand is not detected
         return;
     }
 

@@ -30,7 +30,7 @@
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080 
 
-
+#define SMOOTHING_FACTOR 0.5 // the proportion of contribution from the new fingertip location, compared to the previous fingertip location
 
 
 
@@ -47,10 +47,39 @@ class HandTrackingApplication {
     private:
         VideoStream vs;
         HandTracker* tracker;
+        cv::Point prevFingerTip = cv::Point(-1,-1);
+        /**
+         * Smooths the finger tip location by taking a weighted average of the previous and current locations
+         */
+        cv::Point smoothFingerTip(const cv::Point& newData, const cv::Point& prevData){
+            cv::Point smoothedFingertip;
+            
+            // Update fingertip position
+            smoothedFingertip.x = SMOOTHING_FACTOR * newData.x + (1 - SMOOTHING_FACTOR) * prevData.x;
+            smoothedFingertip.y = SMOOTHING_FACTOR * newData.y + (1 - SMOOTHING_FACTOR) * newData.y;
+            return smoothedFingertip;
+
+        
+        }
+
+        /**
+         * Retrieves the hand data and smooths the finger tip location
+         */
+        HandData getHandData(cv::Mat frame) {
+            HandData newData = tracker->getHandData(frame);
+            if (this->prevFingerTip.x != -1 && newData.indexFingerPosition.x != -1){// both the previous and current fingertip locations are valid
+                newData.indexFingerPosition = smoothFingerTip(newData.indexFingerPosition,this->prevFingerTip);
+            }
+
+            this->prevFingerTip = newData.indexFingerPosition;
+            return newData;
+        }
     public:
     HandTrackingApplication(VideoStream vs, HandTracker* tracker, int targetFps)
-            : vs(vs), tracker(tracker) {}
+            : vs(vs), tracker(tracker) {
 
+            }
+        
         /**
          * Retrieves a frame, processes it, and updates the mouse and keyboard state ,and executes the events
          * @param state The state of the mouse and keyboard
@@ -58,13 +87,16 @@ class HandTrackingApplication {
         void runStep(ControlState& state) {
 
             cv::Mat frame = vs.getFrame();
-            HandData data = tracker->getHandData(frame);
-            state.updateAndExecute(data);
+
+            HandData data = this->getHandData(frame);
+            state.updateAndExecute(data); 
+
 
             // optional display (turn this off when releasing)
             displayHandData(frame,data);
             cv::imshow("Hand Tracking", frame);
             cv::waitKey(1);
+
 
         }
 
