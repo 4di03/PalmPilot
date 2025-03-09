@@ -95,8 +95,6 @@ KeyPressEvent::KeyPressEvent(std::string key) {
 
 void KeyPressEvent::execute() {
 
-    printf("Pressing key with code %d\n", keyCode);
-
     CGEventRef keyDown = CGEventCreateKeyboardEvent(NULL, keyCode, true);
     CGEventRef keyUp = CGEventCreateKeyboardEvent(NULL, keyCode, false);
 

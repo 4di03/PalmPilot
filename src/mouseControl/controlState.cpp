@@ -79,10 +79,10 @@ void ControlState::updateState(const HandData& data) {
         return;
     }
 
-    if (data.numFingersRaised >= 5 && !this->isKeyboardRaised()) {
-        std::cout << "Raising keyboard..." << std::endl;
-        this->raiseKeyboard();
-    } 
+    // if (data.numFingersRaised >= 5 && !this->isKeyboardRaised()) {
+    //     std::cout << "Raising keyboard..." << std::endl;
+    //     this->raiseKeyboard();
+    // } 
     else if (data.numFingersRaised == 0 && !this->isLeftClicked()) {
         std::cout << "Left Clicking Mouse" << std::endl;
         this->clickMouse();

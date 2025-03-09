@@ -155,12 +155,17 @@ class Application{
 };      
 
 // TODOS:
-// improve click precision (since finger tip drops when the palm is closed)
+// make left clicks more consistent, precise, and intuitive
+// in readme or program ask users to raise their own accessibility keyboard
 // implement dragging
+
+
+// make smoothing feel less laggy
+// optional keyboard stuff:
+// raise MAC accessibility keyboard instead of gui keyboard : https://developer.apple.com/documentation/accessibility/accessibility-api
+// make keyboard typing actually type into a focused text box
+// make keyboard not block text box
 // make keyboard come back after closing out
-// TODO: improve  overall tracking smoothness (averaging or kalman filter) (paritucallry with preceise clicks, lot of jitter on finger tips)
-// TODO: reduce sensitivity of left click (smoothness may help)
-// TODO: improve pinky detection so that raise keyboard is more reliable
 // TODO: move this to a proper main file
 // TODO: move all the components of the main function to a composed application class and encapsulate it into a simple run function
 
