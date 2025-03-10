@@ -20,6 +20,9 @@ class ControlState{
 
         // use this for creating keyboard raise and lower events
         KeyboardView& view;
+        
+        std::queue<cv::Point> mousePositions; // queue of last 10 mouse positions to keep track of stability
+        cv::Point lastStableIndexFingerPosition = cv::Point(-1,-1); // last stable position of the index finger (minimal movement)
 
 
         /**
@@ -30,7 +33,6 @@ class ControlState{
         void updateState(const HandData& data);
     public:
 
-        std::queue<std::unique_ptr<Event>> eventQueue;
 
         ControlState(int frameWidth, int frameHeight, int screenWidth, int screenHeight, KeyboardView& view);
 
@@ -50,10 +52,7 @@ class ControlState{
         void createHideKeyboardEvent();
 
         void createKeyPressEvent(std::string key);
-        /**
-         * Executes all events in the event queue
-         */
-        void executeEvents();
+
 
         /**
          * Updates the state of the control and queues the mouse and keyboard events.

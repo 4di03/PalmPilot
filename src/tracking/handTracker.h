@@ -6,6 +6,7 @@
 #define NULL_POINT cv::Point(-1,-1) // null value for a point
 struct HandData{
     cv::Point indexFingerPosition; // point of the index finger if it and the thumb are raised, (-1,-1) if it is not raised
+    cv::Point lastStableIndexFingerPosition; // last stable position of the index finger
     int numFingersRaised; // number of fingers raised, between 0 and 5
     bool handDetected; // True if the hand contour is in frame, else False
 };

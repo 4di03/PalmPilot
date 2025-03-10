@@ -19,6 +19,8 @@ void ControlState::resetClickState(){
 void ControlState::moveMouse(){
     // move mouse resets click, but keyboard may still be raised
     leftClicked = false;
+
+    
 }
 
 void ControlState::raiseKeyboard(){
@@ -52,53 +54,32 @@ void ControlState::createHideKeyboardEvent(){
 void ControlState::createKeyPressEvent(std::string key){
     eventQueue.push(std::make_unique<KeyPressEvent>(key));
 }
-/**
- * Executes all events in the event queue
- */
-void ControlState::executeEvents() {
-    while (!eventQueue.empty()) {
-        Event* e = eventQueue.front().get();
-        e->execute(); 
-        eventQueue.pop();
-    }
-}
 
 /**
- * Updates the state of the control and queues the mouse and keyboard events.
- * Then exceutes those events in FIFO order, assuring that state and queue are always in sync.
+ * Updates the state of the control
+ * Then exceutes the necessary event on the mouse
  */
-void ControlState::updateAndExecute(const HandData& data){
-    updateState(data);
-    this->executeEvents(); 
-}
-
-void ControlState::updateState(const HandData& data) {
+void ControlState::updateAndExecute(const HandData& data) {
     if (!data.handDetected) {
         this->resetClickState(); // we can allow left click again if hand is not detected
         // TODO: once dragging is impletned make sure there is a way to release the drag if hand is not detected
         return;
     }
 
-    // if (data.numFingersRaised >= 5 && !this->isKeyboardRaised()) {
-    //     std::cout << "Raising keyboard..." << std::endl;
-    //     this->raiseKeyboard();
-    // } 
-    else if (data.numFingersRaised == 0 && !this->isLeftClicked()) {
+    if (data.numFingersRaised == 0 && !this->isLeftClicked()) {
         std::cout << "Left Clicking Mouse" << std::endl;
         this->clickMouse();
-        this->eventQueue.push(std::make_unique<LeftClickEvent>());
+        LeftClickEvent(data->lastStableIndexFingerPosition).execute();
     } 
     else if (data.indexFingerPosition.x != -1) {  
         int x = data.indexFingerPosition.x;
         int y = data.indexFingerPosition.y;
         std::pair<int,int> newMouseLocation = getNewMouseLocation(std::pair<int,int>(x,y),frameDims,screenDims);
         this->moveMouse();
-        this->eventQueue.push(std::make_unique<MouseMoveEvent>(newMouseLocation.first, newMouseLocation.second));
+        MouseMoveEvent(newMouseLocation.first, newMouseLocation.second).execute();
     }
     
     
 
-    if (this->isKeyboardRaised()){
-        this->eventQueue.push(std::make_unique<RenderKeyboardEvent>(view, *this));
-    }
+
 }

@@ -64,8 +64,8 @@ void MouseMoveEvent::execute() {
 }
 
 void LeftClickEvent::execute(){
-    HoldLeftClickEvent().execute();
-    ReleaseLeftClickEvent().execute();
+    HoldLeftClickEvent(this->clickLocation).execute();
+    ReleaseLeftClickEvent(this->clickLocation).execute();
 }
 
 // Mapping of key names to macOS key codes : https://developer.apple.com/documentation/coregraphics/cgkeycode

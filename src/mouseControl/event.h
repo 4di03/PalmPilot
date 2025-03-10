@@ -16,12 +16,20 @@ class Event {
 
 
 class HoldLeftClickEvent: public Event {
+    private:
+        CGPoint clickLocation;
     public:
+        HoldLeftClickEvent(): clickLocation(getMouseLocation()) {} // click at current mouse location if no location is provided
+        HoldLeftClickEvent(CGPoint clickLocation) : clickLocation(clickLocation) {}
         void execute();
 };
 
 class ReleaseLeftClickEvent: public Event {
+    private:
+        CGPoint clickLocation;
     public:
+        ReleaseLeftClickEvent(): clickLocation(getMouseLocation()) {}
+        ReleaseLeftClickEvent(CGPoint clickLocation) : clickLocation(clickLocation) {}
         void execute();
 };
 
@@ -35,7 +43,12 @@ class MouseMoveEvent : public Event {
 };
 
 class LeftClickEvent: public Event{
-    void execute();
+    private:
+        CGPoint clickLocation;
+    public:
+        LeftClickEvent(): clickLocation(getMouseLocation()) {}
+        LeftClickEvent(CGPoint clickLocation) : clickLocation(clickLocation) {}
+        void execute();
 };
 
 class KeyPressEvent: public Event{

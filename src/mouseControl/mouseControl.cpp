@@ -42,7 +42,6 @@
 
 
 
-
 class HandTrackingApplication {
     private:
         VideoStream vs;
@@ -126,12 +125,13 @@ class Application{
          */
         void run() {
         while (true) {
+
+
             auto frameStart = std::chrono::steady_clock::now();  // Start time
 
             // update the hand tracking state and fill event queue
             handTrackingApp.runStep(state);
-
-            
+        
             // Calculate time taken for processing
             auto frameEnd = std::chrono::steady_clock::now();
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(frameEnd - frameStart);
@@ -141,6 +141,8 @@ class Application{
             if (sleepTime.count() > 0) {
                 std::this_thread::sleep_for(sleepTime);
             }
+
+
 
 
 
@@ -158,6 +160,7 @@ class Application{
 // make left clicks more consistent, precise, and intuitive
 // in readme or program ask users to raise their own accessibility keyboard
 // implement dragging
+// make hadn tracking invariant to rotation
 
 
 // make smoothing feel less laggy
