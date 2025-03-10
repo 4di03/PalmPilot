@@ -4,7 +4,7 @@
 
 
 
-ControlState::ControlState(int frameWidth, int frameHeight, int screenWidth, int screenHeight, KeyboardView& view): view(view){
+ControlState::ControlState(int frameWidth, int frameHeight, int screenWidth, int screenHeight): view(view){
     std::cout << "L10   " << std::endl;
 
     frameDims = std::pair<int,int>(frameWidth,frameHeight);
@@ -17,39 +17,27 @@ void ControlState::resetClickState(){
 }
 
 void ControlState::moveMouse(){
-    // move mouse resets click, but keyboard may still be raised
     leftClicked = false;
 
     
 }
 
-void ControlState::raiseKeyboard(){
-    showKeyboard = true;
-    leftClicked = false;
-}
+
 
 void ControlState::clickMouse(){
     leftClicked = true;
 }
 
-void ControlState::lowerKeyboard(){
-    printf("Lowering keyboard...\n");
-    showKeyboard = false;
-}
 
-bool ControlState::isKeyboardRaised(){
-    return showKeyboard;
-}
+
+
 
 bool ControlState::isLeftClicked(){
     return leftClicked;
 }
 
 
-void ControlState::createHideKeyboardEvent(){
-    this->lowerKeyboard();
-    eventQueue.push(std::make_unique<HideKeyboardEvent>(view));
-}
+
 
 void ControlState::createKeyPressEvent(std::string key){
     eventQueue.push(std::make_unique<KeyPressEvent>(key));

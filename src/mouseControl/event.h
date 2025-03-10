@@ -1,6 +1,5 @@
 #pragma once
 
-#include "keyboardView.h"
 #include "controlState.h"
 
 std::pair<int,int> getNewMouseLocation(std::pair<int,int> fingerLoc,std::pair<int,int> frameDims, std::pair<int,int> screenDims);
@@ -61,21 +60,4 @@ class KeyPressEvent: public Event{
         void execute();
 };
 
-class RenderKeyboardEvent: public Event{
-    private:
-        KeyboardView& view;
-        ControlState& state;
-    public:
-        RenderKeyboardEvent(KeyboardView& view, ControlState& state) : view(view), state(state) {}
-        void execute();
-};
 
-class HideKeyboardEvent: public Event{
-    private:
-        KeyboardView& view;
-    public:
-    HideKeyboardEvent(KeyboardView& view) 
-    : view(view) {  // ✅ Properly initialize the reference member
-}
-    void execute();
-};

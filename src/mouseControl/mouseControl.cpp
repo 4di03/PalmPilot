@@ -20,7 +20,6 @@
 #include <thread>
 #include <unordered_map>
 #include <string>
-#include "keyboardView.h"
 #include "controlState.h"
 #include "event.h"
 
@@ -80,8 +79,8 @@ class HandTrackingApplication {
             }
         
         /**
-         * Retrieves a frame, processes it, and updates the mouse and keyboard state ,and executes the events
-         * @param state The state of the mouse and keyboard
+         * Retrieves a frame, processes it, and updates the mouse and state ,and executes the events
+         * @param state The state of the mouse 
          */
         void runStep(ControlState& state) {
 
@@ -110,18 +109,16 @@ class Application{
     private:
         HandTrackingApplication& handTrackingApp;
         ControlState& state;
-        KeyboardView& view;
         const int FRAME_TIME_MS;
 
     public:
 
-        Application(HandTrackingApplication& handTrackingApp,ControlState& state, KeyboardView& view,  int targetFps = 10) : handTrackingApp(handTrackingApp), state(state), view(view), FRAME_TIME_MS(1000 / targetFps) {
+        Application(HandTrackingApplication& handTrackingApp,ControlState& state,int targetFps = 10) : handTrackingApp(handTrackingApp), state(state),  FRAME_TIME_MS(1000 / targetFps) {
         }
         
         /**
          * Uses hand data to update state, then executes events.
          * 
-         * use event based system to decouple model (hand tracking) from view (keyboard gui)
          */
         void run() {
         while (true) {
@@ -152,7 +149,6 @@ class Application{
         }
 
         ~Application(){
-            view.cleanupKeyboard();
         }
 };      
 
@@ -184,9 +180,7 @@ int main(){
 
     int targetFps = 10;
     HandTrackingApplication trackingApp(vs, tracker, targetFps);
-    KeyboardView view = KeyboardView();
-    std::cout << "Keyboard view created" << std::endl;
-    ControlState state(trackingBox.screenWidth(), trackingBox.screenHeight(), SCREEN_WIDTH, SCREEN_HEIGHT, view);
+    ControlState state(trackingBox.screenWidth(), trackingBox.screenHeight(), SCREEN_WIDTH, SCREEN_HEIGHT);
     std::cout << "Control state created" << std::endl;
     Application app(trackingApp,state, view);
     app.run();

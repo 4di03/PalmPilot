@@ -68,53 +68,9 @@ void LeftClickEvent::execute(){
     ReleaseLeftClickEvent(this->clickLocation).execute();
 }
 
-// Mapping of key names to macOS key codes : https://developer.apple.com/documentation/coregraphics/cgkeycode
-std::unordered_map<std::string, CGKeyCode> keyMap = {
-    {"1", 18}, {"2", 19}, {"3", 20}, {"4", 21}, {"5", 23},
-    {"6", 22}, {"7", 26}, {"8", 28}, {"9", 25}, {"0", 29},
-
-    {"Q", 12}, {"W", 13}, {"E", 14}, {"R", 15}, {"T", 17},
-    {"Y", 16}, {"U", 32}, {"I", 34}, {"O", 31}, {"P", 35},
-
-    {"A", 0}, {"S", 1}, {"D", 2}, {"F", 3}, {"G", 5},
-    {"H", 4}, {"J", 38}, {"K", 40}, {"L", 37}, {"Back", 51},
-
-    {"Z", 6}, {"X", 7}, {"C", 8}, {"V", 9}, {"B", 11},
-    {"N", 45}, {"M", 46}, {"Space", 49}, {"Enter", 36}  // Clear is NumPad Clear
-};
 
 
-KeyPressEvent::KeyPressEvent(std::string key) {
-        if (keyMap.find(key) == keyMap.end()) {
-            std::cerr << "Key not found in key map" << std::endl;
-            exit(1);
-        }
-        keyCode = keyMap[key];
-    }
-    
-
-void KeyPressEvent::execute() {
-
-    CGEventRef keyDown = CGEventCreateKeyboardEvent(NULL, keyCode, true);
-    CGEventRef keyUp = CGEventCreateKeyboardEvent(NULL, keyCode, false);
-
-    CGEventPost(kCGSessionEventTap, keyDown);
-    CFRelease(keyDown);
 
 
-    CGEventPost(kCGSessionEventTap, keyUp);
-
-    CFRelease(keyUp);
-}
 
 
-void RenderKeyboardEvent::execute(){
-    // raise the keyboard
-    view.renderKeyboard(state);
-
-}
-
-void HideKeyboardEvent::execute(){
-    // hide the keyboard
-    view.hideKeyboard();
-}
