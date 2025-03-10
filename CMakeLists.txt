@@ -19,24 +19,11 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 find_package(glfw3 REQUIRED)
 include_directories(/usr/local/Cellar/glfw/3.4/include)
 
-set(IMGUI_LOC /Users/adithyapalle/libs/imgui)
 
 #silence opengl deprecation warnings
 add_definitions(-DGL_SILENCE_DEPRECATION)
 
 
-
-# Include Dear ImGui headers
-include_directories(${IMGUI_LOC} ${IMGUI_LOC}/backends)
-
-set(IMGUI_SOURCES
-    ${IMGUI_LOC}/imgui.cpp
-    ${IMGUI_LOC}/imgui_draw.cpp
-    ${IMGUI_LOC}/imgui_tables.cpp
-    ${IMGUI_LOC}/imgui_widgets.cpp
-    ${IMGUI_LOC}/backends/imgui_impl_glfw.cpp
-    ${IMGUI_LOC}/backends/imgui_impl_opengl3.cpp
-)
 
 
 # Enables debug symbols, remove this line if you want to build a release version
@@ -51,29 +38,30 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 # TODO: convert library header imports to <> instead of ""
 #create a library for tracking
 add_library(tracking src/tracking/fastTracker.cpp src/tracking/cam.h src/tracking/handTracking.cpp src/tracking/math/convexityDefects.cpp src/tracking/removeFace.cpp src/tracking/backgroundSubtraction.cpp src/tracking/math/kCurvature.cpp src/tracking/math/maxInscribingCircle.cpp src/tracking/calibration.cpp src/tracking/constants.h)
-
-# Add ImGui as a static library
-add_library(imgui STATIC ${IMGUI_SOURCES})
-target_link_libraries(imgui glfw "-framework OpenGL")
+add_library(control src/mouseControl/event.cpp src/mouseControl/controlState.cpp)
 MESSAGE("CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
 
 target_include_directories(tracking PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/tracking)
 target_link_libraries(tracking ${OpenCV_LIBS})
+target_link_libraries(control "-framework CoreGraphics" "-framework CoreFoundation" tracking)
+
 
 # Add the source file
-add_executable(mouseControl src/mouseControl/mouseControl.cpp  src/mouseControl/event.cpp src/mouseControl/controlState.cpp) 
+add_executable(mouseControl src/mouseControl/mouseControl.cpp ) 
 add_executable(webcam_stream src/tracking/cam.cpp )
 add_executable(op_tracking src/tracking/openposeTracker.cpp)
 add_executable(fast_tracking src/tracking/runFastTracking.cpp)
 add_executable(openpose src/tracking/openposeSample.cpp)
 add_executable(check_metal src/tracking/metalTest.cpp)
 add_executable(calibration src/tracking/runCalibration.cpp)
+add_executable(test src/test/testControlState.cpp)
 
 # Link macOS frameworks
-target_link_libraries(mouseControl PRIVATE "-framework CoreGraphics" "-framework CoreFoundation" tracking imgui)
+target_link_libraries(mouseControl PRIVATE  control)
 target_link_libraries(webcam_stream PRIVATE tracking)
 target_link_libraries(op_tracking  PRIVATE tracking)
 target_link_libraries(fast_tracking  PRIVATE tracking)
 target_link_libraries(openpose PRIVATE tracking)
 target_link_libraries(check_metal  PRIVATE tracking)
 target_link_libraries(calibration  PRIVATE tracking)
+target_link_libraries(test  PRIVATE control)

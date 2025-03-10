@@ -1,7 +1,10 @@
 #pragma once
-#include <queue>
 #include <memory>
-
+#include <opencv2/opencv.hpp>
+#include <CoreGraphics/CoreGraphics.h>
+#include "handTracker.h"
+#define MOUSE_POS_QUEUE_SIZE 10 // number of mouse positions to keep track of
+#define STABLE_CONSECUTIVE_POINTS 3 // number of consecutive points that are considered stable
 
 class Event;  // Forward declaration
 
@@ -17,7 +20,6 @@ class ControlState{
         std::pair<int,int> screenDims;  // dimensions of the screen on which the mouse is moved
 
         std::queue<cv::Point> mousePositions; // queue of last 10 mouse positions to keep track of stability
-        cv::Point lastStableIndexFingerPosition = cv::Point(-1,-1); // last stable position of the index finger (minimal movement)
 
 
 
@@ -26,8 +28,9 @@ class ControlState{
 
         ControlState(int frameWidth, int frameHeight, int screenWidth, int screenHeight);
 
+        CGPoint getLastStableClickLocation();
         void resetClickState();
-        void moveMouse();
+        void moveMouse(int x, int y);
 
         void clickMouse();
 

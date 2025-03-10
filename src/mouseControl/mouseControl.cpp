@@ -13,11 +13,6 @@
 #include "calibration.h"
 #include <chrono>
 #include <thread>
-#include <GLFW/glfw3.h>
-#include "imgui.h"
-#include "imgui_impl_glfw.h"
-#include "imgui_impl_opengl3.h"
-#include <thread>
 #include <unordered_map>
 #include <string>
 #include "controlState.h"
@@ -181,8 +176,7 @@ int main(){
     int targetFps = 10;
     HandTrackingApplication trackingApp(vs, tracker, targetFps);
     ControlState state(trackingBox.screenWidth(), trackingBox.screenHeight(), SCREEN_WIDTH, SCREEN_HEIGHT);
-    std::cout << "Control state created" << std::endl;
-    Application app(trackingApp,state, view);
+    Application app(trackingApp,state);
     app.run();
     return 0;
 }

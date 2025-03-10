@@ -69,8 +69,15 @@ void LeftClickEvent::execute(){
 }
 
 
+ReleaseLeftClickEvent::ReleaseLeftClickEvent(): clickLocation(getMouseLocation()) {}
+ReleaseLeftClickEvent::ReleaseLeftClickEvent(CGPoint clickLocation) : clickLocation(clickLocation) {}
+
+HoldLeftClickEvent::HoldLeftClickEvent(): clickLocation(getMouseLocation()) {} // click at current mouse location if no location is provided
+HoldLeftClickEvent::HoldLeftClickEvent(CGPoint clickLocation) : clickLocation(clickLocation) {}
 
 
+LeftClickEvent::LeftClickEvent(): clickLocation(getMouseLocation()) {}
+LeftClickEvent::LeftClickEvent(CGPoint clickLocation) : clickLocation(clickLocation) {}
 
 
 
