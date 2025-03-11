@@ -3,7 +3,6 @@
 #include "event.h"
 
 ControlState::ControlState(int frameWidth, int frameHeight, int screenWidth, int screenHeight){
-    std::cout << "L10   " << std::endl;
 
     frameDims = std::pair<int,int>(frameWidth,frameHeight);
     screenDims = std::pair<int,int>(screenWidth,screenHeight);
@@ -16,9 +15,9 @@ void ControlState::resetClickState(){
 void ControlState::moveMouse(int x, int y){
     leftClicked = false;
 
-    this->mousePositions.push(cv::Point(x,y));
+    this->mousePositions.push_back(cv::Point(x,y));
     if (this->mousePositions.size() > MOUSE_POS_QUEUE_SIZE){
-        this->mousePositions.pop();
+        this->mousePositions.pop_front();
     }
 
     
@@ -38,31 +37,45 @@ bool ControlState::isLeftClicked(){
     return leftClicked;
 }
 
+void printQueue(std::deque<cv::Point> q){
+    printf("[ ");
+    while (!q.empty()){
+        cv::Point p = q.front();
+        printf("(%d,%d) ", p.x, p.y);
+        q.pop_front();
+    }
+    printf("]\n");
 
+}
 
 /**
  * Returns the last stable click location if it exists, else returns (-1,-1)
  * A click location is considered stable if the last 3 consecutive points are within 3 pixels of each other
  */
 CGPoint ControlState::getLastStableClickLocation(){
-    
+    if (this->mousePositions.size() < STABLE_CONSECUTIVE_POINTS){
+        return CGPointMake(-1,-1);
+    }
     // get most recent sequence of values that are similar within (3 pixels vertically and horizontally)
 
     // get copy of the last 10 mouse positions
-    std::queue<cv::Point> mousePositionsCopy = this->mousePositions;
+    std::deque<cv::Point> mousePositionsCopy = this->mousePositions;
+
 
     // go from the back and try and find a sequence of at least 3 points that are within 3 pixels of each other
     int consecutivePoints = 1;
-    cv::Point prevPoint = mousePositionsCopy.front();
-    mousePositionsCopy.pop();
+    cv::Point prevPoint = mousePositionsCopy.back();
+    mousePositionsCopy.pop_back();
     while (consecutivePoints < STABLE_CONSECUTIVE_POINTS && !mousePositionsCopy.empty()){
-        cv::Point currentPoint = mousePositionsCopy.front();
-        mousePositionsCopy.pop();
+        cv::Point currentPoint = mousePositionsCopy.back();
+        mousePositionsCopy.pop_back();
         if (abs(currentPoint.x - prevPoint.x) <= 3 && abs(currentPoint.y - prevPoint.y) <= 3){
             consecutivePoints++;
         }else{
-            consecutivePoints = 0;
+            consecutivePoints = 1;
         }
+
+        prevPoint = currentPoint;
         
     }
 
@@ -75,6 +88,8 @@ CGPoint ControlState::getLastStableClickLocation(){
     
 
 }
+
+
 
 /**
  * Updates the state of the control

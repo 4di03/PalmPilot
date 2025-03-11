@@ -19,7 +19,8 @@ class ControlState{
         std::pair<int,int> frameDims; // dimensions of opencv frame on which finger location is determined
         std::pair<int,int> screenDims;  // dimensions of the screen on which the mouse is moved
 
-        std::queue<cv::Point> mousePositions; // queue of last 10 mouse positions to keep track of stability
+        std::deque<cv::Point> mousePositions; // queue of last 10 mouse positions to keep track of stability
+        // use deque so that we can pop from the front and back of the queue
 
 
 

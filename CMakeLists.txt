@@ -41,7 +41,11 @@ add_library(tracking src/tracking/fastTracker.cpp src/tracking/cam.h src/trackin
 add_library(control src/mouseControl/event.cpp src/mouseControl/controlState.cpp)
 MESSAGE("CMAKE_CURRENT_SOURCE_DIR: ${CMAKE_CURRENT_SOURCE_DIR}")
 
+# add headers to root
 target_include_directories(tracking PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/tracking)
+target_include_directories(control PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/src/mouseControl)
+
+# link external libraries
 target_link_libraries(tracking ${OpenCV_LIBS})
 target_link_libraries(control "-framework CoreGraphics" "-framework CoreFoundation" tracking)
 
