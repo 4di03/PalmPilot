@@ -8,6 +8,7 @@ struct KCurvatureData{
     const cv::Point start;
     const cv::Point point;
     const cv::Point end;
+    const int index;  // index of this->point in the contour it was derived from
 
 
     /**

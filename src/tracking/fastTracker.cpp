@@ -534,14 +534,29 @@ HandData getHandDataFromContour(const std::vector<cv::Point> &contour, const cv:
     }
 
     // get convex hull of the new contour
-    std::vector<int> fingertipIndices = getFingertipPoints(newContour, MAX_DIST);
-    if (fingertipIndices.size() == 0)
+    std::vector<int> possibleFingertipIndices = getFingertipPoints(newContour, MAX_DIST);
+    if (possibleFingertipIndices.size() == 0)
     {
         // even though no finger was found , we assume the contour still represents the hand as it passed through the contour filters
         return HandData{cv::Point(-1, -1), 0, true};
     }
 
-    std::vector<KCurvatureData> kCurvatures = getKCurvatureData(newContour, fingertipIndices);
+    std::vector<KCurvatureData> kCurvatures = getKCurvatureData(newContour, possibleFingertipIndices);
+
+    // extract hull indices of the fingertip points
+    std::vector<int> fingertipIndices;
+    for (int i = 0; i < kCurvatures.size(); i++)
+    {
+        if (kCurvatures[i].getKCurvature() > MIN_CURVATURE && kCurvatures[i].getKCurvature() < MAX_CURVATURE)
+        {
+            fingertipIndices.push_back(kCurvatures[i].index);
+        }
+    }
+
+    if (fingertipIndices.size() == 0) // hand was found but no fingers were detected
+    {
+        return HandData{cv::Point(-1, -1), 0, true};
+    }
 
     if (DEBUG)
     {
@@ -580,6 +595,10 @@ HandData getHandDataFromContour(const std::vector<cv::Point> &contour, const cv:
     }
 
     std::vector<ConvexityDefect> convexityDefects = getConvexityDefects(newContour, fingertipIndices);
+    if (convexityDefects.empty()) // this means no fingers were found yet again as the defect is not significant enough
+    {
+        return HandData{cv::Point(-1, -1), 0, true}; // no hand found
+    }
 
     if (DEBUG)
     {
@@ -593,7 +612,18 @@ HandData getHandDataFromContour(const std::vector<cv::Point> &contour, const cv:
             cv::line(convexityDefectImage, cd.start, cd.end, color, 2);
             cv::line(convexityDefectImage, cd.start, cd.furthestPoint, color, 2);
             cv::line(convexityDefectImage, cd.end, cd.furthestPoint, color, 2);
+
+            // put star at furthest point
+            cv::drawMarker(convexityDefectImage, cd.furthestPoint, color, cv::MARKER_STAR, 10, 2);
+
         }
+
+        //put circle on fingertip points
+        for (cv::Point pt : fingertipPoints)
+        {
+            cv::circle(convexityDefectImage, pt, 5, cv::Scalar(0, 255, 0), -1);
+        }
+
         cv::imshow("Convexity Defects", convexityDefectImage);
     }
 

@@ -17,7 +17,10 @@ std::vector<KCurvatureData> getKCurvatureData(const std::vector<cv::Point>& cont
         cv::Point start = contour[(i - K_CURVATURE_POINTS + n) % n];
         cv::Point point = contour[i];
         cv::Point end = contour[(i + K_CURVATURE_POINTS) % n];
-        kCurvatureData.push_back(KCurvatureData{start, point, end});
+        kCurvatureData.push_back(KCurvatureData{start, point, end,i});
     }
+
+
+
     return kCurvatureData;
 }
