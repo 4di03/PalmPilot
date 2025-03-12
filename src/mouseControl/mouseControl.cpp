@@ -24,9 +24,8 @@
 #define SCREEN_WIDTH 1920
 #define SCREEN_HEIGHT 1080 
 
-#define SMOOTHING_FACTOR 0.5 // the proportion of contribution from the new fingertip location, compared to the previous fingertip location
 
-
+#define SIMILARITY_RANGE 5 // the pixel range in which we consider two points to be the same( need to have <= this differnce in x and y to be considered the same)
 
 
 
@@ -42,16 +41,19 @@ class HandTrackingApplication {
         HandTracker* tracker;
         cv::Point prevFingerTip = cv::Point(-1,-1);
         /**
-         * Smooths the finger tip location by taking a weighted average of the previous and current locations
+         * If the data is < SIMILARITY_RANGE pixels away from the previous data, then the data is considered to be the same
+         * @param newData The new fingertip location
+         * @param prevData The previous fingertip location
          */
-        cv::Point smoothFingerTip(const cv::Point& newData, const cv::Point& prevData){
-            cv::Point smoothedFingertip;
-            
-            // Update fingertip position
-            smoothedFingertip.x = SMOOTHING_FACTOR * newData.x + (1 - SMOOTHING_FACTOR) * prevData.x;
-            smoothedFingertip.y = SMOOTHING_FACTOR * newData.y + (1 - SMOOTHING_FACTOR) * newData.y;
-            return smoothedFingertip;
-
+        cv::Point correctFingerTip(const cv::Point& newData, const cv::Point& prevData){
+            if(prevData.x == -1){
+                return newData;
+            }
+            if (abs(newData.x - prevData.x) < SIMILARITY_RANGE && abs(newData.y - prevData.y) < SIMILARITY_RANGE){ // if the new data is within 3 pixels of the previous data, then we consider it to be the same
+                return cv::Point(prevData.x,prevData.y);
+            }else{
+                return cv::Point(newData.x,newData.y);
+            }
         
         }
 
@@ -61,7 +63,7 @@ class HandTrackingApplication {
         HandData getHandData(cv::Mat frame) {
             HandData newData = tracker->getHandData(frame);
             if (this->prevFingerTip.x != -1 && newData.indexFingerPosition.x != -1){// both the previous and current fingertip locations are valid
-                newData.indexFingerPosition = smoothFingerTip(newData.indexFingerPosition,this->prevFingerTip);
+                newData.indexFingerPosition = correctFingerTip(newData.indexFingerPosition,this->prevFingerTip);
             }
 
             this->prevFingerTip = newData.indexFingerPosition;
@@ -148,9 +150,10 @@ class Application{
 };      
 
 // TODOS:
-// make left clicks more consistent, precise, and intuitive
-// in readme or program ask users to raise their own accessibility keyboard
+// make left clicks more consistent, precise, and intuitive (need to research more on how to do this beyond stable clicks and smoothing for index finger pos)
 // implement dragging
+// record demo
+// in readme or program ask users to raise their own accessibility keyboard
 // make hadn tracking invariant to rotation
 
 

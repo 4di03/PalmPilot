@@ -289,7 +289,7 @@ void dragRectCallback(int event, int x, int y, int flags, void* userdata) {
     }
     TrackingRect& rect = *rectPtr;
 
-    //std::cout << "Rect: " << rect << std::endl;
+    std::cout << "Mouse event: " << event << " at (" << x << ", " << y << ")" << std::endl;
 
     // todo : make more robust so that its only if its on the x/y value and on the rect (right now it just checks if it lines up with the lines)
     // todo: fix bug where if its too small, you wont be able to split the bottom from the middle
@@ -412,6 +412,7 @@ void calibrateTrackingBox() {
         cv::imshow(windowName, image);
 
         // Exit if the user presses 'q'
+        std::cout << " " << std::endl; // THIS LINE MAKES MOUSE CALLBACK GET CALLED MORE OFTEN
         char key = cv::waitKey(1); // updates to slider variables are made here
         if (key == 'q' || key == 27) break; // 'q' or 'ESC' to quit
     }

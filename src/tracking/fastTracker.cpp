@@ -1,6 +1,9 @@
 #include "fastTracker.h"
 #include "cam.h"
 #include "calibration.h"
+
+#define SMOOTHING_ERROR 0.003 // increase this to increase smoothing 
+// TODO: decouple wiht k-curvature points
 /**
  * Computes the circularity of a contour by comparing the area and perimeter of its convex hull
  */
@@ -525,6 +528,7 @@ HandData getHandDataFromContour(const std::vector<cv::Point> &contour, const cv:
         if (dist(pt, maxInscribingCircle.center) < MAX_INSCRIBING_CIRCLE_CONTOUR_DIST * maxInscribingCircle.radius &&
             pt.y < maxInscribingCircle.center.y + maxInscribingCircle.radius)
         {
+
             newContour.push_back(pt);
         }
     }
@@ -536,6 +540,7 @@ HandData getHandDataFromContour(const std::vector<cv::Point> &contour, const cv:
         // even though no finger was found , we assume the contour still represents the hand as it passed through the contour filters
         return HandData{cv::Point(-1, -1), 0, true};
     }
+
     std::vector<KCurvatureData> kCurvatures = getKCurvatureData(newContour, fingertipIndices);
 
     if (DEBUG)
@@ -604,6 +609,18 @@ FastTracker::FastTracker(ContourFilterStrategy *filterStrategy, HandMaskStrategy
 }
 
 /**
+ * Smooths the contour by approximating it with a polygon, reducing the total number of points
+ * and smoothing out irregularities.
+ */
+void smoothContourApprox(std::vector<cv::Point>& contour, double epsilonFactor =SMOOTHING_ERROR) {
+    if (contour.size() < 3) {
+        return; // Cannot approximate a contour with less than 3 points
+    }
+    double epsilon = epsilonFactor * cv::arcLength(contour, true); // Tuning parameter
+    cv::approxPolyDP(contour, contour, epsilon, true);
+}
+
+/**
  * Gets the HandData relative to the tracking box from the image (defined in TRACKING_BOX_FILE)
  * @param image The image to get the hand data from
  * @return HandData object containing the hand data
@@ -625,15 +642,20 @@ HandData FastTracker::getHandData(const cv::Mat &image)
 
     std::vector<cv::Point> contour = filterStrategy->filterContour(contours);
 
+    if (DEBUG){
+        std::cout << "Contour num-points (pre-smoothing): " << contour.size() << std::endl;
+    }
+    //smoothContourApprox(contour); // Smooth the contour
+
 
     if (DEBUG)
     {
-        std::cout<<  "Contour size: " << contour.size() << std::endl;
-        // // draw the contour
-        // cv::Mat contourImage = cv::Mat::zeros(handMask.size(), CV_8UC3);
-        // cv::drawContours(contourImage, std::vector<std::vector<cv::Point>>{contour}, -1, cv::Scalar(0, 255, 0), 2);
-
-        // cv::imshow("Hand Mask", handMask);
+        std::cout<<  "Contour num-points (post-smoothing): " << contour.size() << std::endl;
+        // draw the contour
+        cv::Mat contourImage = cv::Mat::zeros(handMask.size(), CV_8UC3);
+        cv::drawContours(contourImage, std::vector<std::vector<cv::Point>>{contour}, -1, cv::Scalar(0, 255, 0), 2);
+        
+        cv::imshow("smoothed contour", contourImage);
     }
 
     HandData h =  getHandDataFromContour(contour, roi);
