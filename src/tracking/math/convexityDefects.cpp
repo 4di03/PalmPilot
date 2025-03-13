@@ -1,5 +1,16 @@
 #include "convexityDefects.h"
 #include "constants.h"
+
+// Comparator for cv::Point to be used in std::set
+struct PointComparator {
+    /**
+     * Compares two cv::Points, returning true if p1 < p2, false otherwise
+     */
+    bool operator()(const cv::Point& p1, const cv::Point& p2) const {
+        return std::tie(p1.x, p1.y) < std::tie(p2.x, p2.y);
+    }
+};
+
 /**
  * TODO: get the convexity defects from the entire hull, but filter those that are not direclty attached to any finger tips (as those tend to 
  * intersect with the palm area), and then you can use these accurate defects to determine the slenderness/angle of the triangels
@@ -14,6 +25,14 @@ std::vector<ConvexityDefect> getConvexityDefects(const std::vector<cv::Point>& c
         std::cerr << "Error: Empty contour passed to getConvexityDefects" << std::endl;
         exit(1);
     }
+
+
+    // get a set of the fingertip points
+    std::set<cv::Point, PointComparator> pointSet;
+    for (int i : fingertipIndices){
+        pointSet.insert(contour[i]);
+    }
+
     std::vector<cv::Vec4i> rawDefects;
     std::vector<ConvexityDefect> defects;
 
@@ -28,6 +47,16 @@ std::vector<ConvexityDefect> getConvexityDefects(const std::vector<cv::Point>& c
 
     for (cv::Vec4i defect : rawDefects){
         ConvexityDefect cd;
+
+        cv::Point start = contour[defect[0]];
+        cv::Point end = contour[defect[1]];
+
+        // skip if neither of the hull points for the defect are fingertip points
+        if (pointSet.find(start) == pointSet.end() && pointSet.find(end) == pointSet.end()){
+            continue;
+        }
+
+
         cd.start = contour[defect[0]];
         cd.end = contour[defect[1]];
         cd.furthestPoint = contour[defect[2]];

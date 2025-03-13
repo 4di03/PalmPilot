@@ -21,4 +21,4 @@ struct ConvexityDefect{
  * @param contour the contour to get the convexity defects of
  * @param hullIndices the indices of the convex hull points for the contour
  */
-std::vector<ConvexityDefect> getConvexityDefects(const std::vector<cv::Point>& contour, const std::vector<int>& hullIndices);
+std::vector<ConvexityDefect> getConvexityDefects(const std::vector<cv::Point>& contour, const std::vector<int>& hullIndices, const std::vector<int>& fingertipIndices);

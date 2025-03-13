@@ -594,7 +594,7 @@ HandData getHandDataFromContour(const std::vector<cv::Point> &contour, const cv:
         cv::imshow("Fingertips", fingertipImage);
     }
 
-    std::vector<ConvexityDefect> convexityDefects = getConvexityDefects(newContour, fingertipIndices);
+    std::vector<ConvexityDefect> convexityDefects = getConvexityDefects(newContour, possibleFingertipIndices, fingertipIndices);
     if (convexityDefects.empty()) // this means no fingers were found yet again as the defect is not significant enough
     {
         return HandData{cv::Point(-1, -1), 0, true}; // no hand found
