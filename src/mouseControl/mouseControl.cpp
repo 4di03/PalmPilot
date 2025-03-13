@@ -157,6 +157,11 @@ class Application{
 // make hadn tracking invariant to rotation
 
 
+// optimization for gesture detection:
+// ML-based gesture detection
+ // - make program to generate training data using keypressses (take snapshtos of hands in differnet gesture posutiosn)
+ // - train fast model on HandData, contour info, convexity info, k -curvature, etc and use it to predict gestures
+ // - compare with rule based system and see which one is better 
 // make smoothing feel less laggy
 // optional keyboard stuff:
 // raise MAC accessibility keyboard instead of gui keyboard : https://developer.apple.com/documentation/accessibility/accessibility-api

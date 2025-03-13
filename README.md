@@ -11,10 +11,12 @@ The palm detection relies on distinguishing the color of your palm, so please us
 
 Dependencies:
 - C++ 14
-- OpenCv
-- QT
-Quick make and run command:
+- OpenCV 4
+
+Quick build and run command:
 
 ```
-cd build && make && cd .. && build/fast_tracking
+cd build && make && ./mouseControl
 ```
+
+* this project is still a work in progress
