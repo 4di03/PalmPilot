@@ -495,6 +495,20 @@ cv::Point getIndexFingerPosition(std::vector<ConvexityDefect> convexityDefects, 
         indexFingerPosition = maxDefect.end;
     }
     return indexFingerPosition;
+
+
+}
+
+/**
+ * Returns true if all the convexity defects are obtuse triangles
+ */
+bool onlyObtuseDefects(const std::vector<ConvexityDefect>& convexityDefects){
+    for (ConvexityDefect cd : convexityDefects){
+        if (!cd.isObtuse()){
+            return false;
+        }
+    }
+    return true;
 }
 
 /**
@@ -587,18 +601,19 @@ HandData getHandDataFromContour(const std::vector<cv::Point> &contour, const cv:
         }
     }
 
-    if (DEBUG)
-    {
-        cv::Mat fingertipImage = img.clone();
-        drawKeypoints(fingertipImage, fingertipPoints);
-        cv::imshow("Fingertips", fingertipImage);
-    }
+    // if (DEBUG)
+    // {
+    //     cv::Mat fingertipImage = img.clone();
+    //     drawKeypoints(fingertipImage, fingertipPoints);
+    //     cv::imshow("Fingertips", fingertipImage);
+    // }
 
     std::vector<ConvexityDefect> convexityDefects = getConvexityDefects(newContour, possibleFingertipIndices, fingertipIndices);
     if (convexityDefects.empty()) // this means no fingers were found yet again as the defect is not significant enough
     {
         return HandData{cv::Point(-1, -1), 0, true}; // no hand found
     }
+    bool onlyObtuse = onlyObtuseDefects(convexityDefects);
 
     if (DEBUG)
     {
@@ -615,7 +630,13 @@ HandData getHandDataFromContour(const std::vector<cv::Point> &contour, const cv:
 
             // put star at furthest point
             cv::drawMarker(convexityDefectImage, cd.furthestPoint, color, cv::MARKER_STAR, 10, 2);
-
+            
+            // draw only Obtuse verdict
+            if (onlyObtuse){
+                cv::putText(convexityDefectImage, "All Obtuse", cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
+            }else{
+                cv::putText(convexityDefectImage, "Not All Obtuse", cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
+            }
         }
 
         //put circle on fingertip points
@@ -625,6 +646,11 @@ HandData getHandDataFromContour(const std::vector<cv::Point> &contour, const cv:
         }
 
         cv::imshow("Convexity Defects", convexityDefectImage);
+    }
+
+    if (onlyObtuse && fingertipPoints.size() <= 1){ // if all obtuse and only one fingertip point, then no fingers are raised ( so we cna detect click) TODO: untangle / decouple this logic from mouse control
+        return HandData{cv::Point(-1, -1), 0, true}; // no fingers raised as all defect triangles are obtuse (if there was a gap in raised fingers you'd expect at least one triangle to be acute)
+
     }
 
     cv::Point indexFingerPosition = getIndexFingerPosition(convexityDefects, maxInscribingCircle);
@@ -678,15 +704,15 @@ HandData FastTracker::getHandData(const cv::Mat &image)
     //smoothContourApprox(contour); // Smooth the contour
 
 
-    if (DEBUG)
-    {
-        std::cout<<  "Contour num-points (post-smoothing): " << contour.size() << std::endl;
-        // draw the contour
-        cv::Mat contourImage = cv::Mat::zeros(handMask.size(), CV_8UC3);
-        cv::drawContours(contourImage, std::vector<std::vector<cv::Point>>{contour}, -1, cv::Scalar(0, 255, 0), 2);
+    // if (DEBUG)
+    // {
+    //     std::cout<<  "Contour num-points (post-smoothing): " << contour.size() << std::endl;
+    //     // draw the contour
+    //     cv::Mat contourImage = cv::Mat::zeros(handMask.size(), CV_8UC3);
+    //     cv::drawContours(contourImage, std::vector<std::vector<cv::Point>>{contour}, -1, cv::Scalar(0, 255, 0), 2);
         
-        cv::imshow("smoothed contour", contourImage);
-    }
+    //     cv::imshow("smoothed contour", contourImage);
+    // }
 
     HandData h =  getHandDataFromContour(contour, roi);
 

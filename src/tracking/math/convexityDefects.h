@@ -13,6 +13,28 @@ struct ConvexityDefect{
         
         return cv::norm(start - end) * depth / 2;
     }
+
+    /**
+     * Determine if the triangle formed by the start, end, and furthest point of the defect is obtuse
+     */
+    bool isObtuse() const {
+        cv::Point a = start - furthestPoint;
+        cv::Point b = end - furthestPoint;
+        cv::Point c = start - end;
+    
+        // Compute squared magnitudes to avoid redundant calculations
+        double normA = cv::norm(a);
+        double normB = cv::norm(b);
+        double normC = cv::norm(c);
+    
+        // Compute angles using dot products
+        double angle1 = acos(a.dot(b) / (normA * normB)); // Angle at furthestPoint
+        double angle2 = acos((a).dot(c) / (normA * normC)); // Angle at start
+        double angle3 = acos((-b).dot(c) / (normB * normC)); // Angle at end
+    
+        return angle1 > CV_PI / 2 || angle2 > CV_PI / 2 || angle3 > CV_PI / 2;
+    }
+    
 };
 
 

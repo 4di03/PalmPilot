@@ -4,7 +4,7 @@
 #include <CoreGraphics/CoreGraphics.h>
 #include "handTracker.h"
 #define MOUSE_POS_QUEUE_SIZE 10 // number of mouse positions to keep track of
-#define STABLE_CONSECUTIVE_POINTS 3 // number of consecutive points that are considered stable
+#define STABLE_CONSECUTIVE_POINTS 2 // number of consecutive points that are considered stable
 
 class Event;  // Forward declaration
 

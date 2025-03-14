@@ -83,6 +83,8 @@ CGPoint ControlState::getLastStableClickLocation(){
     if (consecutivePoints == STABLE_CONSECUTIVE_POINTS){
         return CGPointMake(prevPoint.x,prevPoint.y);
     }else{
+        printf("returning null stable click location\n");
+        printQueue(this->mousePositions);
         return CGPointMake(-1,-1);
     }
     
@@ -103,10 +105,18 @@ void ControlState::updateAndExecute(const HandData& data) {
     }
 
     if (data.numFingersRaised == 0 && !this->isLeftClicked()) {
-        std::cout << "Left Clicking Mouse" << std::endl;
+
+        // CGPoint lastStableClickLocation = this->getLastStableClickLocation();
+
+        // if (lastStableClickLocation.x == -1) {// just use current index finger position if we can't find a stable click location
+        //     lastStableClickLocation = CGPointMake(data.indexFingerPosition.x, data.indexFingerPosition.y);
+        // }
+        CGPoint lastStableClickLocation = CGPointMake(data.indexFingerPosition.x, data.indexFingerPosition.y);
+
+        std::cout << "Left Clicking Mouse at :"  << lastStableClickLocation.x << " " << lastStableClickLocation.y << std::endl;
         this->clickMouse();
         // TODO: cache last stable click location if needed
-        LeftClickEvent(this->getLastStableClickLocation()).execute();
+        LeftClickEvent(lastStableClickLocation).execute();
     } 
     else if (data.indexFingerPosition.x != -1) {  
         int x = data.indexFingerPosition.x;

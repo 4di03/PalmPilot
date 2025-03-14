@@ -20,3 +20,12 @@ cd build && make && ./mouseControl
 ```
 
 * this project is still a work in progress
+
+
+### Parameters
+
+A good color range I've found is:
+```yaml
+Lower: 0.000000, 146.000000, 0.000000
+Upper: 255.000000, 254.000000, 255.000000
+```
