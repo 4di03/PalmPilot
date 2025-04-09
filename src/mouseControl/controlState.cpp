@@ -97,7 +97,9 @@ CGPoint ControlState::getLastStableClickLocation(){
  * Updates the state of the control
  * Then exceutes the necessary event on the mouse
  */
-void ControlState::updateAndExecute(const HandData& data) {
+void ControlState::updateAndExecute(const HandDataOutput& dataOutput) {
+    const HandData& data = dataOutput.handData;
+    this->handTrackingState = dataOutput.trackingState; // store the tracking state for the next frame
     if (!data.handDetected) {
         this->resetClickState(); // we can allow left click again if hand is not detected
         // TODO: once dragging is impletned make sure there is a way to release the drag if hand is not detected

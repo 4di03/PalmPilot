@@ -3,6 +3,7 @@
 #include "calibration.h"
 
 #define SMOOTHING_ERROR 0.003 // increase this to increase smoothing 
+#define IOU_THRESHOLD 0.9 // if the IOU between two consecutive frames is greater than this, then we consider the hand to be stable and use the previous contour
 // TODO: decouple wiht k-curvature points
 /**
  * Computes the circularity of a contour by comparing the area and perimeter of its convex hull
@@ -514,12 +515,14 @@ bool onlyObtuseDefects(const std::vector<ConvexityDefect>& convexityDefects){
 
 /**
  * Gets the contour of the hand that is closest to the max inscribing circle
- * filter contours in region 4 * radius of max inscribing circle (MIC), and are above the lowest point of the MIC
+ * filter contours in region 4 * radius of max inscribing circle (MIC), and are above the lowest point of the MIC.
+ * Then we compare the new contour to the previous contour, and if they are similar (IOU > IOU_THRESHOLD), we return the previous contour for stability
+ * 
  * @param contour The contour of the hand
  * @param maxInscribingCircle The max inscribing circle of the hand
  * @return The contour of the hand that is closest to the max inscribing circle
  */
-std::vector<cv::Point> getContourNearMaxInscribingCircle(const std::vector<cv::Point> &contour, const Circle &maxInscribingCircle)
+std::vector<cv::Point> postprocessContour(const std::vector<cv::Point> &contour, const Circle &maxInscribingCircle, const std::vector<cv::Point>& prevContour)
 {
     // 
     std::vector<cv::Point> newContour;
@@ -533,6 +536,16 @@ std::vector<cv::Point> getContourNearMaxInscribingCircle(const std::vector<cv::P
         }
     }
 
+
+    if (prevContour.size() > 0)
+    {
+        // check if the new contour is similar to the previous contour
+        float iou = getIOUForContours(newContour, prevContour);
+        if (iou > IOU_THRESHOLD)
+        {
+            return prevContour;
+        }
+    }
     return newContour;
 }
 
@@ -558,12 +571,42 @@ std::vector<int> filterFingertipsByKCurvature(const std::vector<KCurvatureData> 
 }
 
 /**
+ * Computes the Intersection over Union (IoU) for two contours
+ * This is done by creating a mask for each contour, and then computing the intersection and union of the two masks.
+ * We then take the area of the intersection and divide it by the area of the union to get the IoU.
+ * @param c1 The first contour
+ * @param c2 The second contour
+ * @return The IoU value between 0 and 1
+ */
+float getIOUForContours(const std::vector<cv::Point>& c1, const std::vector<cv::Point>& c2){
+    cv::Mat mask1 = cv::Mat::zeros(maskSize, CV_8UC1);
+    cv::Mat mask2 = cv::Mat::zeros(maskSize, CV_8UC1);
+
+    // Fill the contours
+    cv::drawContours(mask1, std::vector<std::vector<cv::Point>>{c1}, -1, 255, cv::FILLED);
+    cv::drawContours(mask2, std::vector<std::vector<cv::Point>>{c2}, -1, 255, cv::FILLED);
+
+    // Bitwise AND and OR
+    cv::Mat intersectionMask, unionMask;
+    cv::bitwise_and(mask1, mask2, intersectionMask);
+    cv::bitwise_or(mask1, mask2, unionMask);
+
+    float intersectionArea = static_cast<float>(cv::countNonZero(intersectionMask));
+    float unionArea = static_cast<float>(cv::countNonZero(unionMask));
+
+    if (unionArea == 0.0f)
+        return 0.0f;
+
+    return intersectionArea / unionArea;
+}
+
+/**
  * Gets Hand Data from the contour
- * @param contour The contour of the hand
+ * @param contour The contour of the hand and arm (if the arm is in the image)
  * @param img The image to draw on (optional)
  * @return HandData containing the index finger position, circularity, and whether the hand was found
  */
-HandData getHandDataFromContour(const std::vector<cv::Point> &contour, const cv::Mat &img = cv::Mat())
+HandData getHandDataFromContour(const std::vector<cv::Point> &contour, const HandTrackingState& prevTrackingState, const cv::Mat &img)
 {
     if (contour.size() == 0)
     {
@@ -576,7 +619,7 @@ HandData getHandDataFromContour(const std::vector<cv::Point> &contour, const cv:
     // max inscribing circle is assumed to be the palm of the hand
     Circle maxInscribingCircle = getMaxInscribingCircle(contour, img);
     // get the contour of the hand that is closest to the max inscribing circle
-    std::vector<cv::Point> newContour = getContourNearMaxInscribingCircle(contour, maxInscribingCircle);
+    std::vector<cv::Point> newContour = postprocessContour(contour, maxInscribingCircle, prevTrackingState.handContour);
     if (DEBUG)
     {
         // cv::Mat inscribingCircleImage = img.clone();
@@ -699,9 +742,10 @@ void smoothContourApprox(std::vector<cv::Point>& contour, double epsilonFactor =
 /**
  * Gets the HandData relative to the tracking box from the image (defined in TRACKING_BOX_FILE)
  * @param image The image to get the hand data from
+ * @param previousTrackingState The previous tracking state (used for temporal-feature comparison)
  * @return HandData object containing the hand data
  */
-HandData FastTracker::getHandData(const cv::Mat &image)
+HandData FastTracker::getHandData(const cv::Mat &image, const HandTrackingState& previousTrackingState)
 {
 
     // slice only the region of interest (tracking box)
@@ -737,12 +781,12 @@ HandData FastTracker::getHandData(const cv::Mat &image)
 /**
  * Factory function to create a new FastTracker instance
  */
-
 FastTracker* initBestTracker() {
     HandMaskStrategy* maskStrategy = new HandMaskStrategy(
         new CompositePostProcessing(
             {
              new DilationPostProcessing(1), 
+            // new GaussianBlurPostProcessing(5),
             }
         )
     );

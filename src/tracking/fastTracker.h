@@ -177,7 +177,7 @@ private:
 
 public:
     FastTracker(ContourFilterStrategy *filterStrategy, HandMaskStrategy *maskStrategy);
-    HandData getHandData(const cv::Mat &image) override;
+    HandDataOutput getHandData(const cv::Mat &image) override;
     ~FastTracker(){
         delete filterStrategy;
         delete maskStrategy;

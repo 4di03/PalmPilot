@@ -60,8 +60,10 @@ class HandTrackingApplication {
         /**
          * Retrieves the hand data and smooths the finger tip location
          */
-        HandData getHandData(cv::Mat frame) {
-            HandData newData = tracker->getHandData(frame);
+        HandDataOutput getHandDataFromFrame(const cv::Mat& frame, const HandTrackingState& previousTrackingState){ {
+            HandDataOutput newDataOutput = tracker->getHandData(frame, previousTrackingState);
+            HandData newData = newDataOutput.handData;
+             
             if (this->prevFingerTip.x != -1 && newData.indexFingerPosition.x != -1){// both the previous and current fingertip locations are valid
                 newData.indexFingerPosition = correctFingerTip(newData.indexFingerPosition,this->prevFingerTip);
             }
@@ -77,14 +79,14 @@ class HandTrackingApplication {
         
         /**
          * Retrieves a frame, processes it, and updates the mouse and state ,and executes the events
-         * @param state The state of the mouse 
+         * @param state The state of the mouse and hand tracking. mutated by hand data
          */
         void runStep(ControlState& state) {
 
             cv::Mat frame = vs.getFrame();
 
-            HandData data = this->getHandData(frame);
-            state.updateAndExecute(data); 
+            HandDataOutput data = this->getHandDataFromFrame(frame, state.handTrackingState);
+            state.updateAndExecute(data); // stores the hand tracking state for the next frame and other mouse position data
 
 
             // optional display (turn this off when releasing)

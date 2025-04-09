@@ -11,6 +11,17 @@ struct HandData{
 };
 
 
+// lower-level data used for hand tracking
+struct HandTrackingState{
+    std::vector<cv::Point>& handContour; // contour of the hand
+}
+
+struct HandDataOutput{
+    HandData handData; // data about the hand (public for users)
+    HandTrackingState trackingState; // state of the hand tracking (meant for recording state for future next frame)
+};
+
+
 class HandKeypointTracker{
     // Interface for strategies to track the hand in the image
     public:
@@ -23,6 +34,6 @@ class HandKeypointTracker{
 class HandTracker{
     // Interface for strategies to track bare minimum hand data needed for computer control
     public:
-    virtual HandData getHandData(const cv::Mat& image) = 0;
+    virtual HandDataOutput getHandData(const cv::Mat& image, const HandTrackingState& previousTrackingState) = 0;
 
 };
