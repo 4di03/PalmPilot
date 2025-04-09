@@ -150,6 +150,11 @@ class Application{
 };      
 
 // TODOS:
+// make detection more stable (only detect no hand if last K frames have no hand)
+    // stability issue 1: index finger pos flickering back and forth even though hand is relatively stable
+    // stability issue 2: random clicks when moving hand (finger count drops to 0)
+// decouple hand tracking from mouse control (obtuse and 1 fingers becomes 0 fingers, should not happen in hand tracking). Add obtuse flag to HandData?
+// update all docs and code to move towards retracth thumb signifies click model. make thumb retraction detection more stable, s
 // make left clicks more consistent, precise, and intuitive (need to research more on how to do this beyond stable clicks and smoothing for index finger pos)
 // implement dragging
 // record demo

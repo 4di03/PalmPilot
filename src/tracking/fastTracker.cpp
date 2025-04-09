@@ -321,7 +321,7 @@ cv::Point getCenterPt(const std::vector<cv::Point> &points)
 
 // Function to get the indices of points representing finger tips (first find the rough convex hull and then search for nearby points that have maximum y-coordinate)
 // Returns the contour indices for the most central points, sorted in ascending order
-std::vector<int> getFingertipPoints(const std::vector<cv::Point> &contour, double maxDist)
+std::vector<int> getMaximalHullIndices(const std::vector<cv::Point> &contour, double maxDist)
 {
 
     // Get hull indices and hull points
@@ -511,9 +511,57 @@ bool onlyObtuseDefects(const std::vector<ConvexityDefect>& convexityDefects){
     return true;
 }
 
+
+/**
+ * Gets the contour of the hand that is closest to the max inscribing circle
+ * filter contours in region 4 * radius of max inscribing circle (MIC), and are above the lowest point of the MIC
+ * @param contour The contour of the hand
+ * @param maxInscribingCircle The max inscribing circle of the hand
+ * @return The contour of the hand that is closest to the max inscribing circle
+ */
+std::vector<cv::Point> getContourNearMaxInscribingCircle(const std::vector<cv::Point> &contour, const Circle &maxInscribingCircle)
+{
+    // 
+    std::vector<cv::Point> newContour;
+    for (cv::Point pt : contour)
+    {
+        if (dist(pt, maxInscribingCircle.center) < MAX_INSCRIBING_CIRCLE_CONTOUR_DIST * maxInscribingCircle.radius &&
+            pt.y < maxInscribingCircle.center.y + maxInscribingCircle.radius)
+        {
+
+            newContour.push_back(pt);
+        }
+    }
+
+    return newContour;
+}
+
+/**
+ * From a list of k-curvature data, filter out the points that are not fingertip points by checking if the k-curvature is within a certain range
+ * @param kCurvatures The list of k-curvature data
+ * @return The list of indices of the fingertip points relative to the original contour
+ */
+std::vector<int> filterFingertipsByKCurvature(const std::vector<KCurvatureData> &kCurvatures)
+{
+
+    // extract hull indices of the fingertip points
+    std::vector<int> fingertipIndices;
+    for (int i = 0; i < kCurvatures.size(); i++)
+    {
+        if (kCurvatures[i].getKCurvature() > MIN_CURVATURE && kCurvatures[i].getKCurvature() < MAX_CURVATURE)
+        {
+            fingertipIndices.push_back(kCurvatures[i].index);
+        }
+    }
+
+    return fingertipIndices;
+}
+
 /**
  * Gets Hand Data from the contour
- * 
+ * @param contour The contour of the hand
+ * @param img The image to draw on (optional)
+ * @return HandData containing the index finger position, circularity, and whether the hand was found
  */
 HandData getHandDataFromContour(const std::vector<cv::Point> &contour, const cv::Mat &img = cv::Mat())
 {
@@ -527,7 +575,8 @@ HandData getHandDataFromContour(const std::vector<cv::Point> &contour, const cv:
 
     // max inscribing circle is assumed to be the palm of the hand
     Circle maxInscribingCircle = getMaxInscribingCircle(contour, img);
-
+    // get the contour of the hand that is closest to the max inscribing circle
+    std::vector<cv::Point> newContour = getContourNearMaxInscribingCircle(contour, maxInscribingCircle);
     if (DEBUG)
     {
         // cv::Mat inscribingCircleImage = img.clone();
@@ -535,42 +584,27 @@ HandData getHandDataFromContour(const std::vector<cv::Point> &contour, const cv:
         // cv::imshow("Max Inscribing Circle", inscribingCircleImage);
     }
 
-    // filter contours in region 4 * radius of max inscribing circle (MIC), and are above the lowest point of the MIC
-    std::vector<cv::Point> newContour;
-    for (cv::Point pt : contour)
-    {
-        if (dist(pt, maxInscribingCircle.center) < MAX_INSCRIBING_CIRCLE_CONTOUR_DIST * maxInscribingCircle.radius &&
-            pt.y < maxInscribingCircle.center.y + maxInscribingCircle.radius)
-        {
 
-            newContour.push_back(pt);
-        }
-    }
 
-    // get convex hull of the new contour
-    std::vector<int> possibleFingertipIndices = getFingertipPoints(newContour, MAX_DIST);
-    if (possibleFingertipIndices.size() == 0)
+    // get convex hull points of the new countour
+    std::vector<int> hullIndices = getMaximalHullIndices(newContour, MAX_DIST);
+    if (hullIndices.size() == 0)
     {
         // even though no finger was found , we assume the contour still represents the hand as it passed through the contour filters
         return HandData{cv::Point(-1, -1), 0, true};
     }
 
-    std::vector<KCurvatureData> kCurvatures = getKCurvatureData(newContour, possibleFingertipIndices);
+    std::vector<KCurvatureData> kCurvatures = getKCurvatureData(newContour, hullIndices);
 
     // extract hull indices of the fingertip points
-    std::vector<int> fingertipIndices;
-    for (int i = 0; i < kCurvatures.size(); i++)
+    std::vector<int> fingertipIndices = filterFingertipsByKCurvature(kCurvatures);
+    if (fingertipIndices.size() == 0)
     {
-        if (kCurvatures[i].getKCurvature() > MIN_CURVATURE && kCurvatures[i].getKCurvature() < MAX_CURVATURE)
-        {
-            fingertipIndices.push_back(kCurvatures[i].index);
-        }
-    }
-
-    if (fingertipIndices.size() == 0) // hand was found but no fingers were detected
-    {
+        // even though no finger was found , we assume the contour still represents the hand as it passed through the contour filters
         return HandData{cv::Point(-1, -1), 0, true};
     }
+
+
 
     if (DEBUG)
     {
@@ -590,25 +624,10 @@ HandData getHandDataFromContour(const std::vector<cv::Point> &contour, const cv:
         cv::imshow("K_CURVATURE_POINTS Curvature", KCurvatureImage);
     }
 
-    std::vector<cv::Point> fingertipPoints;
 
-    for (KCurvatureData kCurvature : kCurvatures)
-    {
-        double angle = kCurvature.getKCurvature();
-        if (angle > MIN_CURVATURE && angle < MAX_CURVATURE)
-        {
-            fingertipPoints.push_back(kCurvature.point);
-        }
-    }
 
-    // if (DEBUG)
-    // {
-    //     cv::Mat fingertipImage = img.clone();
-    //     drawKeypoints(fingertipImage, fingertipPoints);
-    //     cv::imshow("Fingertips", fingertipImage);
-    // }
 
-    std::vector<ConvexityDefect> convexityDefects = getConvexityDefects(newContour, possibleFingertipIndices, fingertipIndices);
+    std::vector<ConvexityDefect> convexityDefects = getConvexityDefects(newContour, hullIndices, fingertipIndices);
     if (convexityDefects.empty()) // this means no fingers were found yet again as the defect is not significant enough
     {
         return HandData{cv::Point(-1, -1), 0, true}; // no hand found
@@ -640,22 +659,23 @@ HandData getHandDataFromContour(const std::vector<cv::Point> &contour, const cv:
         }
 
         //put circle on fingertip points
-        for (cv::Point pt : fingertipPoints)
+        for (int index : fingertipIndices)
         {
-            cv::circle(convexityDefectImage, pt, 5, cv::Scalar(0, 255, 0), -1);
+            cv::Point pt = newContour[index];
+            cv::circle(convexityDefectImage, pt, 5, cv::Scalar(255, 0, 0), -1);
         }
 
         cv::imshow("Convexity Defects", convexityDefectImage);
     }
 
-    if (onlyObtuse && fingertipPoints.size() <= 1){ // if all obtuse and only one fingertip point, then no fingers are raised ( so we cna detect click) TODO: untangle / decouple this logic from mouse control
+    if (onlyObtuse && fingertipIndices.size() <= 1){ // if all obtuse and only one fingertip point, then no fingers are raised ( so we cna detect click) TODO: untangle / decouple this logic from mouse control
         return HandData{cv::Point(-1, -1), 0, true}; // no fingers raised as all defect triangles are obtuse (if there was a gap in raised fingers you'd expect at least one triangle to be acute)
 
     }
 
     cv::Point indexFingerPosition = getIndexFingerPosition(convexityDefects, maxInscribingCircle);
 
-    return HandData{indexFingerPosition, static_cast<int>(fingertipPoints.size()), true};
+    return HandData{indexFingerPosition, static_cast<int>(fingertipIndices.size()), true};
 }
 
 FastTracker::FastTracker(ContourFilterStrategy *filterStrategy, HandMaskStrategy *maskStrategy)
@@ -701,18 +721,7 @@ HandData FastTracker::getHandData(const cv::Mat &image)
     if (DEBUG){
         std::cout << "Contour num-points (pre-smoothing): " << contour.size() << std::endl;
     }
-    //smoothContourApprox(contour); // Smooth the contour
 
-
-    // if (DEBUG)
-    // {
-    //     std::cout<<  "Contour num-points (post-smoothing): " << contour.size() << std::endl;
-    //     // draw the contour
-    //     cv::Mat contourImage = cv::Mat::zeros(handMask.size(), CV_8UC3);
-    //     cv::drawContours(contourImage, std::vector<std::vector<cv::Point>>{contour}, -1, cv::Scalar(0, 255, 0), 2);
-        
-    //     cv::imshow("smoothed contour", contourImage);
-    // }
 
     HandData h =  getHandDataFromContour(contour, roi);
 
