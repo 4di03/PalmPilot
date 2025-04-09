@@ -306,6 +306,36 @@ double ptDist(const cv::Point &pt1, const cv::Point &pt2)
 {
     return cv::norm(pt1 - pt2);
 }
+/**
+ * Computes the Intersection over Union (IoU) for two contours
+ * This is done by creating a mask for each contour, and then computing the intersection and union of the two masks.
+ * We then take the area of the intersection and divide it by the area of the union to get the IoU.
+ * @param c1 The first contour
+ * @param c2 The second contour
+ * @param maskSize The size of the mask to create (same size as image from which the contours were derived)
+ * @return The IoU value between 0 and 1
+ */
+float getIOUForContours(const std::vector<cv::Point>& c1, const std::vector<cv::Point>& c2, const cv::Size& maskSize){
+    cv::Mat mask1 = cv::Mat::zeros(maskSize, CV_8UC1);
+    cv::Mat mask2 = cv::Mat::zeros(maskSize, CV_8UC1);
+
+    // Fill the contours
+    cv::drawContours(mask1, std::vector<std::vector<cv::Point>>{c1}, -1, 255, cv::FILLED);
+    cv::drawContours(mask2, std::vector<std::vector<cv::Point>>{c2}, -1, 255, cv::FILLED);
+
+    // Bitwise AND and OR
+    cv::Mat intersectionMask, unionMask;
+    cv::bitwise_and(mask1, mask2, intersectionMask);
+    cv::bitwise_or(mask1, mask2, unionMask);
+
+    float intersectionArea = static_cast<float>(cv::countNonZero(intersectionMask));
+    float unionArea = static_cast<float>(cv::countNonZero(unionMask));
+
+    if (unionArea == 0.0f)
+        return 0.0f;
+
+    return intersectionArea / unionArea;
+}
 
 // Function to get the center point of a group of points
 cv::Point getCenterPt(const std::vector<cv::Point> &points)
@@ -522,8 +552,16 @@ bool onlyObtuseDefects(const std::vector<ConvexityDefect>& convexityDefects){
  * @param maxInscribingCircle The max inscribing circle of the hand
  * @return The contour of the hand that is closest to the max inscribing circle
  */
-std::vector<cv::Point> postprocessContour(const std::vector<cv::Point> &contour, const Circle &maxInscribingCircle, const std::vector<cv::Point>& prevContour)
+std::vector<cv::Point> postprocessContour(const std::vector<cv::Point> &contour, 
+    const Circle &maxInscribingCircle, 
+    const std::vector<cv::Point>& prevContour,
+    const cv::Size& imageSize)
 {
+    if (contour.size() == 0)
+    {
+        return std::vector<cv::Point>();
+    }
+
     // 
     std::vector<cv::Point> newContour;
     for (cv::Point pt : contour)
@@ -540,7 +578,7 @@ std::vector<cv::Point> postprocessContour(const std::vector<cv::Point> &contour,
     if (prevContour.size() > 0)
     {
         // check if the new contour is similar to the previous contour
-        float iou = getIOUForContours(newContour, prevContour);
+        float iou = getIOUForContours(newContour, prevContour, imageSize);
         if (iou > IOU_THRESHOLD)
         {
             return prevContour;
@@ -570,156 +608,6 @@ std::vector<int> filterFingertipsByKCurvature(const std::vector<KCurvatureData> 
     return fingertipIndices;
 }
 
-/**
- * Computes the Intersection over Union (IoU) for two contours
- * This is done by creating a mask for each contour, and then computing the intersection and union of the two masks.
- * We then take the area of the intersection and divide it by the area of the union to get the IoU.
- * @param c1 The first contour
- * @param c2 The second contour
- * @return The IoU value between 0 and 1
- */
-float getIOUForContours(const std::vector<cv::Point>& c1, const std::vector<cv::Point>& c2){
-    cv::Mat mask1 = cv::Mat::zeros(maskSize, CV_8UC1);
-    cv::Mat mask2 = cv::Mat::zeros(maskSize, CV_8UC1);
-
-    // Fill the contours
-    cv::drawContours(mask1, std::vector<std::vector<cv::Point>>{c1}, -1, 255, cv::FILLED);
-    cv::drawContours(mask2, std::vector<std::vector<cv::Point>>{c2}, -1, 255, cv::FILLED);
-
-    // Bitwise AND and OR
-    cv::Mat intersectionMask, unionMask;
-    cv::bitwise_and(mask1, mask2, intersectionMask);
-    cv::bitwise_or(mask1, mask2, unionMask);
-
-    float intersectionArea = static_cast<float>(cv::countNonZero(intersectionMask));
-    float unionArea = static_cast<float>(cv::countNonZero(unionMask));
-
-    if (unionArea == 0.0f)
-        return 0.0f;
-
-    return intersectionArea / unionArea;
-}
-
-/**
- * Gets Hand Data from the contour
- * @param contour The contour of the hand and arm (if the arm is in the image)
- * @param img The image to draw on (optional)
- * @return HandData containing the index finger position, circularity, and whether the hand was found
- */
-HandData getHandDataFromContour(const std::vector<cv::Point> &contour, const HandTrackingState& prevTrackingState, const cv::Mat &img)
-{
-    if (contour.size() == 0)
-    {
-        if (DEBUG){
-            std::cerr << "Error: Empty contour passed to getHandDataFromContour" << std::endl;
-        }
-        return HandData{cv::Point(-1, -1), 0, false};
-    }
-
-    // max inscribing circle is assumed to be the palm of the hand
-    Circle maxInscribingCircle = getMaxInscribingCircle(contour, img);
-    // get the contour of the hand that is closest to the max inscribing circle
-    std::vector<cv::Point> newContour = postprocessContour(contour, maxInscribingCircle, prevTrackingState.handContour);
-    if (DEBUG)
-    {
-        // cv::Mat inscribingCircleImage = img.clone();
-        // cv::circle(inscribingCircleImage, maxInscribingCircle.center, maxInscribingCircle.radius, cv::Scalar(0, 255, 0), 2);
-        // cv::imshow("Max Inscribing Circle", inscribingCircleImage);
-    }
-
-
-
-    // get convex hull points of the new countour
-    std::vector<int> hullIndices = getMaximalHullIndices(newContour, MAX_DIST);
-    if (hullIndices.size() == 0)
-    {
-        // even though no finger was found , we assume the contour still represents the hand as it passed through the contour filters
-        return HandData{cv::Point(-1, -1), 0, true};
-    }
-
-    std::vector<KCurvatureData> kCurvatures = getKCurvatureData(newContour, hullIndices);
-
-    // extract hull indices of the fingertip points
-    std::vector<int> fingertipIndices = filterFingertipsByKCurvature(kCurvatures);
-    if (fingertipIndices.size() == 0)
-    {
-        // even though no finger was found , we assume the contour still represents the hand as it passed through the contour filters
-        return HandData{cv::Point(-1, -1), 0, true};
-    }
-
-
-
-    if (DEBUG)
-    {
-
-        // draw new contour
-        cv::Mat newContourImage = img.clone();
-        cv::drawContours(newContourImage, std::vector<std::vector<cv::Point>>{newContour}, -1, cv::Scalar(0, 255, 0), 2);
-        cv::imshow("Hand Contour", newContourImage);
-
-        // draw k-curvatures
-        cv::Mat KCurvatureImage = img.clone();
-        for (KCurvatureData kCurvature : kCurvatures)
-        {
-            cv::line(KCurvatureImage, kCurvature.start, kCurvature.point, cv::Scalar(0, 255, 0), 2);
-            cv::line(KCurvatureImage, kCurvature.end, kCurvature.point, cv::Scalar(0, 255, 0), 2);
-        }
-        cv::imshow("K_CURVATURE_POINTS Curvature", KCurvatureImage);
-    }
-
-
-
-
-    std::vector<ConvexityDefect> convexityDefects = getConvexityDefects(newContour, hullIndices, fingertipIndices);
-    if (convexityDefects.empty()) // this means no fingers were found yet again as the defect is not significant enough
-    {
-        return HandData{cv::Point(-1, -1), 0, true}; // no hand found
-    }
-    bool onlyObtuse = onlyObtuseDefects(convexityDefects);
-
-    if (DEBUG)
-    {
-        // shade the convexity defects with a unique color for each
-        cv::Mat convexityDefectImage = img.clone();
-        for (int i = 0; i < convexityDefects.size(); i++)
-        {
-            ConvexityDefect cd = convexityDefects[i];
-            // make random color
-            cv::Scalar color = cv::Scalar(rand() % 256, rand() % 256, rand() % 256);
-            cv::line(convexityDefectImage, cd.start, cd.end, color, 2);
-            cv::line(convexityDefectImage, cd.start, cd.furthestPoint, color, 2);
-            cv::line(convexityDefectImage, cd.end, cd.furthestPoint, color, 2);
-
-            // put star at furthest point
-            cv::drawMarker(convexityDefectImage, cd.furthestPoint, color, cv::MARKER_STAR, 10, 2);
-            
-            // draw only Obtuse verdict
-            if (onlyObtuse){
-                cv::putText(convexityDefectImage, "All Obtuse", cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
-            }else{
-                cv::putText(convexityDefectImage, "Not All Obtuse", cv::Point(10, 30), cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
-            }
-        }
-
-        //put circle on fingertip points
-        for (int index : fingertipIndices)
-        {
-            cv::Point pt = newContour[index];
-            cv::circle(convexityDefectImage, pt, 5, cv::Scalar(255, 0, 0), -1);
-        }
-
-        cv::imshow("Convexity Defects", convexityDefectImage);
-    }
-
-    if (onlyObtuse && fingertipIndices.size() <= 1){ // if all obtuse and only one fingertip point, then no fingers are raised ( so we cna detect click) TODO: untangle / decouple this logic from mouse control
-        return HandData{cv::Point(-1, -1), 0, true}; // no fingers raised as all defect triangles are obtuse (if there was a gap in raised fingers you'd expect at least one triangle to be acute)
-
-    }
-
-    cv::Point indexFingerPosition = getIndexFingerPosition(convexityDefects, maxInscribingCircle);
-
-    return HandData{indexFingerPosition, static_cast<int>(fingertipIndices.size()), true};
-}
 
 FastTracker::FastTracker(ContourFilterStrategy *filterStrategy, HandMaskStrategy *maskStrategy)
 {
@@ -739,43 +627,212 @@ void smoothContourApprox(std::vector<cv::Point>& contour, double epsilonFactor =
     cv::approxPolyDP(contour, contour, epsilon, true);
 }
 
+
+/**
+ * Gets the raw hand tracking state data from the image and previous tracking state
+ * @param image The image to get the hand data from
+ * @param previousTrackingState The previous tracking state (used for temporal-feature comparison)
+ * @return HandTrackingState object containing the hand data
+ */
+HandTrackingState FastTracker::getHandTrackingState(const cv::Mat& img , const HandTrackingState& previousTrackingState){
+
+        // slice only the region of interest (tracking box)
+        static TrackingRect trackingBox = parseTrackingBox(TRACKING_BOX_FILE);
+        cv::Mat roi = trackingBox.cropImage(img);
+        cv::Mat handMask = maskStrategy->makeHandMask(roi);
+    
+        std::vector<std::vector<cv::Point>> contours;
+        cv::findContours(handMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    
+        if (DEBUG){
+            std::cout << "Contours size pre-filter: " << contours.size() << std::endl;
+        }
+    
+        std::vector<cv::Point> contour = filterStrategy->filterContour(contours);
+    
+        if (DEBUG){
+            std::cout << "Contour num-points (pre-smoothing): " << contour.size() << std::endl;
+        }
+    
+    
+        // if (contour.size() == 0)
+        // {
+        //     if (DEBUG){
+        //         std::cerr << "Error: Empty contour passed to getHandDataFromContour" << std::endl;
+        //     }
+        //     return HandData{cv::Point(-1, -1), 0, false};
+        // }
+
+        // max inscribing circle is assumed to be the palm of the hand
+        Circle maxInscribingCircle = getMaxInscribingCircle(contour, img);
+        // get the contour of the hand that is closest to the max inscribing circle
+        std::vector<cv::Point> newContour = postprocessContour(contour, 
+            maxInscribingCircle, 
+            previousTrackingState.handContour,
+            img.size());
+        if (DEBUG)
+        {
+            // cv::Mat inscribingCircleImage = img.clone();
+            // cv::circle(inscribingCircleImage, maxInscribingCircle.center, maxInscribingCircle.radius, cv::Scalar(0, 255, 0), 2);
+            // cv::imshow("Max Inscribing Circle", inscribingCircleImage);
+        }
+
+
+
+        // get convex hull points of the new countour
+        std::vector<int> hullIndices = getMaximalHullIndices(newContour, MAX_DIST);
+        // if (hullIndices.size() == 0)
+        // {
+        //     // even though no finger was found , we assume the contour still represents the hand as it passed through the contour filters
+        //     return HandData{cv::Point(-1, -1), 0, true};
+        // }
+
+        std::vector<KCurvatureData> kCurvatures = getKCurvatureData(newContour, hullIndices);
+
+        // extract hull indices of the fingertip points
+        std::vector<int> fingertipIndices = filterFingertipsByKCurvature(kCurvatures);
+        // if (fingertipIndices.size() == 0)
+        // {
+        //     // even though no finger was found , we assume the contour still represents the hand as it passed through the contour filters
+        //     return HandData{cv::Point(-1, -1), 0, true};
+        // }
+
+
+
+        if (DEBUG)
+        {
+
+            // draw new contour
+            cv::Mat newContourImage = img.clone();
+            cv::drawContours(newContourImage, std::vector<std::vector<cv::Point>>{newContour}, -1, cv::Scalar(0, 255, 0), 2);
+            cv::imshow("Hand Contour", newContourImage);
+
+            // draw k-curvatures
+            cv::Mat KCurvatureImage = img.clone();
+            for (KCurvatureData kCurvature : kCurvatures)
+            {
+                cv::line(KCurvatureImage, kCurvature.start, kCurvature.point, cv::Scalar(0, 255, 0), 2);
+                cv::line(KCurvatureImage, kCurvature.end, kCurvature.point, cv::Scalar(0, 255, 0), 2);
+            }
+            cv::imshow("K_CURVATURE_POINTS Curvature", KCurvatureImage);
+        }
+
+
+
+
+        std::vector<ConvexityDefect> convexityDefects = getConvexityDefects(newContour, hullIndices, fingertipIndices);
+        // if (convexityDefects.empty()) // this means no fingers were found yet again as the defect is not significant enough
+        // {
+        //     return HandData{cv::Point(-1, -1), 0, true}; // no hand found
+        // }
+        // bool onlyObtuse = onlyObtuseDefects(convexityDefects);
+
+        if (DEBUG)
+        {
+            // shade the convexity defects with a unique color for each
+            cv::Mat convexityDefectImage = img.clone();
+            for (int i = 0; i < convexityDefects.size(); i++)
+            {
+                ConvexityDefect cd = convexityDefects[i];
+                // make random color
+                cv::Scalar color = cv::Scalar(rand() % 256, rand() % 256, rand() % 256);
+                cv::line(convexityDefectImage, cd.start, cd.end, color, 2);
+                cv::line(convexityDefectImage, cd.start, cd.furthestPoint, color, 2);
+                cv::line(convexityDefectImage, cd.end, cd.furthestPoint, color, 2);
+
+                // put star at furthest point
+                cv::drawMarker(convexityDefectImage, cd.furthestPoint, color, cv::MARKER_STAR, 10, 2);
+                
+
+            }
+
+            //put circle on fingertip points
+            for (int index : fingertipIndices)
+            {
+                cv::Point pt = newContour[index];
+                cv::circle(convexityDefectImage, pt, 5, cv::Scalar(255, 0, 0), -1);
+            }
+
+            cv::imshow("Convexity Defects", convexityDefectImage);
+        }
+
+        // if (onlyObtuse && fingertipIndices.size() <= 1){ // if all obtuse and only one fingertip point, then no fingers are raised ( so we cna detect click) TODO: untangle / decouple this logic from mouse control
+        //     return HandData{cv::Point(-1, -1), 0, true}; // no fingers raised as all defect triangles are obtuse (if there was a gap in raised fingers you'd expect at least one triangle to be acute)
+
+        // }
+
+        cv::Point indexFingerPosition = getIndexFingerPosition(convexityDefects, maxInscribingCircle);
+
+        // use std::move to optimize copying of data
+        return HandTrackingState{
+            std::move(contour),
+            std::move(newContour),
+            std::move(convexityDefects),
+            std::move(indexFingerPosition),
+            std::move(fingertipIndices),
+            std::move(trackingBox)  // probably already a reference or static, fine to copy
+        };
+}
+
+/**
+ * Gets a refined Hand Data output given the raw tracking state data object.
+ * Basically this takes the low-level data in the tracking state and refines it into
+ * the user-friendly HandData format.
+ * 
+ * Uses a couple of boolean rules to determine if the hand and fingers are present or not.
+ * 
+ * 
+ * @param handTrackingState The raw tracking state data
+ * @return HandDataOutput object containing the refined hand data as well as handTrackign State
+ */
+HandDataOutput getHandDataFromState(const HandTrackingState& handTrackingState)
+{
+    // TODO: get hand data
+    HandData handData;
+
+    bool emptyContour = handTrackingState.handContour.size() == 0;
+    bool indexFingerOutOfBounds = handTrackingState.indexFingerPosition.x == -1 || handTrackingState.indexFingerPosition.y == -1;
+    int numFingers = handTrackingState.fingertipIndices.size();
+    bool noDefects = handTrackingState.convexityDefects.size() == 0;
+    bool onlyObtuse = onlyObtuseDefects(handTrackingState.convexityDefects);
+
+
+    
+    if (emptyContour || indexFingerOutOfBounds)
+    {
+        // no hand found
+        handData = HandData{cv::Point(-1, -1), 0, false};
+    }else if (numFingers == 0 || noDefects || onlyObtuse && numFingers == 1){
+        // no fingers found, or they were not significant enough to make a defect
+        // or if all defects are obtuse and only one fingertip point, then it means the only finger is so low that we don't consider it raised
+        handData = HandData{handTrackingState.indexFingerPosition, 0, true};
+    } else{
+        // hand and fingers found
+        handData = HandData{handTrackingState.indexFingerPosition, numFingers, true};
+    }
+
+
+    // TODO: figure out if we can further optimize this initalization 
+    return HandDataOutput{
+        std::move(handData), 
+        std::move(handTrackingState)
+    };
+}
+
+
 /**
  * Gets the HandData relative to the tracking box from the image (defined in TRACKING_BOX_FILE)
  * @param image The image to get the hand data from
  * @param previousTrackingState The previous tracking state (used for temporal-feature comparison)
  * @return HandData object containing the hand data
  */
-HandData FastTracker::getHandData(const cv::Mat &image, const HandTrackingState& previousTrackingState)
+HandDataOutput FastTracker::getHandData(const cv::Mat &image, const HandTrackingState& previousTrackingState)
 {
 
-    // slice only the region of interest (tracking box)
-    static TrackingRect trackingBox = parseTrackingBox(TRACKING_BOX_FILE);
-    cv::Mat roi = trackingBox.cropImage(image);
-    cv::Mat handMask = maskStrategy->makeHandMask(roi);
 
-    std::vector<std::vector<cv::Point>> contours;
-    cv::findContours(handMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    HandTrackingState curTrackingState =  getHandTrackingState(image, previousTrackingState);
 
-    if (DEBUG){
-        std::cout << "Contours size pre-filter: " << contours.size() << std::endl;
-    }
-
-    std::vector<cv::Point> contour = filterStrategy->filterContour(contours);
-
-    if (DEBUG){
-        std::cout << "Contour num-points (pre-smoothing): " << contour.size() << std::endl;
-    }
-
-
-    HandData h =  getHandDataFromContour(contour, roi);
-
-    // invalidate the data if the index finger is not found in the top box
-    if (h.indexFingerPosition.x != -1 && h.indexFingerPosition.y > trackingBox.screenHeight())
-    {
-        return HandData{cv::Point(-1, -1), 0, false};
-    }else{
-        return h;
-    }
+    return getHandDataFromState(previousTrackingState);
 }
 
 /**

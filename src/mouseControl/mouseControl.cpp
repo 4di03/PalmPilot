@@ -60,16 +60,17 @@ class HandTrackingApplication {
         /**
          * Retrieves the hand data and smooths the finger tip location
          */
-        HandDataOutput getHandDataFromFrame(const cv::Mat& frame, const HandTrackingState& previousTrackingState){ {
+        HandDataOutput getHandDataFromFrame(const cv::Mat& frame, const HandTrackingState& previousTrackingState){ 
             HandDataOutput newDataOutput = tracker->getHandData(frame, previousTrackingState);
             HandData newData = newDataOutput.handData;
              
+            // TODO: move this logic into prevTrackingstate and perform refinement there in the refineHandData function
             if (this->prevFingerTip.x != -1 && newData.indexFingerPosition.x != -1){// both the previous and current fingertip locations are valid
                 newData.indexFingerPosition = correctFingerTip(newData.indexFingerPosition,this->prevFingerTip);
             }
 
             this->prevFingerTip = newData.indexFingerPosition;
-            return newData;
+            return newDataOutput;
         }
     public:
     HandTrackingApplication(VideoStream vs, HandTracker* tracker, int targetFps)
@@ -90,7 +91,7 @@ class HandTrackingApplication {
 
 
             // optional display (turn this off when releasing)
-            displayHandData(frame,data);
+            displayHandData(frame,data.handData);
             cv::imshow("Hand Tracking", frame);
             cv::waitKey(1);
 

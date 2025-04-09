@@ -23,9 +23,10 @@ private:
     std::deque<cv::Point> mousePositions; // queue of last 10 mouse positions to keep track of stability
     // use deque so that we can pop from the front and back of the queue
 
-    HandTrackingState &handTrackingState; // state of the hand tracking
 
 public:
+    HandTrackingState handTrackingState; // state of the hand tracking
+
     ControlState(int frameWidth, int frameHeight, int screenWidth, int screenHeight);
 
     CGPoint getLastStableClickLocation();
@@ -42,5 +43,5 @@ public:
      * Updates the state of the control and queues the mouse  events.
      * Then exceutes those events in FIFO order, assuring that state and queue are always in sync.
      */
-    void updateAndExecute(const HandData &data);
+    void updateAndExecute(const HandDataOutput &data);
 };

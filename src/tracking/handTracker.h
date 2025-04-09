@@ -1,4 +1,6 @@
 #include <opencv2/opencv.hpp>
+#include "math/convexityDefects.h"
+#include "calibration.h"
 #pragma once
 
 
@@ -13,8 +15,40 @@ struct HandData{
 
 // lower-level data used for hand tracking
 struct HandTrackingState{
-    std::vector<cv::Point>& handContour; // contour of the hand
-}
+    std::vector<cv::Point> fullContour; // full contour of the hand , arm, and other noise
+    std::vector<cv::Point> handContour; // contour of the hand
+    std::vector<ConvexityDefect> convexityDefects; // convexity defects of the hand
+    cv::Point indexFingerPosition; // position of the index finger
+    std::vector<int> fingertipIndices;  // indices of the fingertip points in the handContour
+    TrackingRect trackingBox; // tracking box of the hand that detrmines the valid location a fingertip can be in
+
+
+        // Default constructor
+        HandTrackingState()
+        : fullContour(),
+          handContour(),
+          convexityDefects(),
+          indexFingerPosition(-1, -1),
+          fingertipIndices(),
+          trackingBox(cv::Point(0, 0), 0, cv::Point(0, 0))
+        {}
+
+
+        // complete constructor
+        HandTrackingState(std::vector<cv::Point> fullContour, 
+            std::vector<cv::Point> handContour, 
+            std::vector<ConvexityDefect> convexityDefects, 
+            cv::Point indexFingerPosition, 
+            std::vector<int> fingertipIndices, 
+            TrackingRect trackingBox)
+        : fullContour(fullContour),
+          handContour(handContour),
+          convexityDefects(convexityDefects),
+          indexFingerPosition(indexFingerPosition),
+          fingertipIndices(fingertipIndices),
+          trackingBox(trackingBox)
+        {}
+};
 
 struct HandDataOutput{
     HandData handData; // data about the hand (public for users)

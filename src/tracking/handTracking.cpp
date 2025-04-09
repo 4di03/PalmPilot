@@ -156,13 +156,18 @@ void runHandTracking(HandTracker* tracker){
             break;
         }
         HandData handData = HandData{cv::Point(-1, -1), 0, false};
-        HandTrackingState previousTrackingState = HandTrackingState{std::vector<cv::Point>()};
+        HandTrackingState previousTrackingState = HandTrackingState{std::vector<cv::Point>(), 
+            std::vector<cv::Point>(), 
+            std::vector<ConvexityDefect>(), 
+            cv::Point(-1,-1), 
+            std::vector<int>(),
+             TrackingRect(cv::Point(0,0),0,cv::Point(0,0))};
         if (ct % INTERP_INTERVAL == 0){
 
             auto start = std::chrono::high_resolution_clock::now();
-            HandDataOutput handData = tracker->getHandData(frame, previousTrackingState);
-            handData = handData.handData;
-            previousTrackingState = handData.trackingState;
+            HandDataOutput handDataOutput = tracker->getHandData(frame, previousTrackingState);
+            handData = handDataOutput.handData;
+            previousTrackingState = handDataOutput.trackingState;
 
             auto end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double, std::milli> elapsed = end - start;

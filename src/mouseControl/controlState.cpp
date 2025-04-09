@@ -2,7 +2,7 @@
 #include "controlState.h"
 #include "event.h"
 
-ControlState::ControlState(int frameWidth, int frameHeight, int screenWidth, int screenHeight){
+ControlState::ControlState(int frameWidth, int frameHeight, int screenWidth, int screenHeight) : handTrackingState(), leftClicked(false) {
 
     frameDims = std::pair<int,int>(frameWidth,frameHeight);
     screenDims = std::pair<int,int>(screenWidth,screenHeight);
