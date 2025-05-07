@@ -3,7 +3,7 @@
 
 Circle getMaxInscribingCircle(const std::vector<cv::Point>& contour, const cv::Mat& img) {
     if (contour.empty()) {
-        throw std::runtime_error("Contour is empty");
+        return Circle{cv::Point(-1, -1), -1}; // Return an invalid circle if the contour is empty
     }
 
     cv::Mat filledContour = cv::Mat::zeros(img.size(), CV_8UC1);

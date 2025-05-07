@@ -237,7 +237,7 @@ float getValue(std::string line, std::string label){
 }
 
 // Parses the tracking box from a file
-TrackingRect parseTrackingBox(std::string path) {
+ TrackingRect parseTrackingBox(std::string path) {
     std::ifstream file(path);
     if (!file.is_open()) {
         std::cerr << "Error: Could not open file to read tracking box." << std::endl;
@@ -266,7 +266,6 @@ TrackingRect parseTrackingBox(std::string path) {
 
     float br_y = getValue(line, "bottom_right_y");
 
-
     return TrackingRect(cv::Point(tl_x, tl_y), my, cv::Point(br_x, br_y));
 
 
@@ -281,7 +280,7 @@ void dragRectCallback(int event, int x, int y, int flags, void* userdata) {
     static cv::Point clickOffset;
     static bool dragging = false;
     static int resizeDirection = -1; // 0: Left, 1: Right, 2: Top, 3: Bottom, -1 is not resizing
-    constexpr int resizeBorder = 10;
+     int resizeBorder = 10;
 
     if (!rectPtr){
         std::cerr << "Error: No rectangle pointer provided." << std::endl;
@@ -385,15 +384,15 @@ void calibrateTrackingBox() {
 
     // Load previous tracking box if available
     std::ifstream trackingBoxFile(TRACKING_BOX_FILE);
-    TrackingRect previousBox;
-    if (trackingBoxFile.is_open()) {
-        std::cout << "Tracking box file found. Loading previous tracking box." << std::endl;
-        trackingBoxFile.close();
-        previousBox = parseTrackingBox(TRACKING_BOX_FILE);
-    } else {
-        std::cout << "No tracking box file found. Setting default tracking box." << std::endl;
-        previousBox = TrackingRect(cv::Point(100, 100), 200, cv::Point(200, 300));
+
+    if (!trackingBoxFile.is_open()) {
+        std::cerr << "Error: Could not open file to read tracking box. please run calibration binary." << std::endl;
+        exit(1);
     }
+
+    TrackingRect previousBox = parseTrackingBox(TRACKING_BOX_FILE);
+
+    trackingBoxFile.close();
 
     // Set mouse callback
     cv::setMouseCallback(windowName, dragRectCallback, &previousBox);

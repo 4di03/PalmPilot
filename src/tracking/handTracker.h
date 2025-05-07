@@ -30,7 +30,7 @@ struct HandTrackingState{
           convexityDefects(),
           indexFingerPosition(-1, -1),
           fingertipIndices(),
-          trackingBox(cv::Point(0, 0), 0, cv::Point(0, 0))
+          trackingBox()
         {}
 
 

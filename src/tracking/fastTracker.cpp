@@ -9,7 +9,10 @@
  * Computes the circularity of a contour by comparing the area and perimeter of its convex hull
  */
 float getConvexHullCircularity(const std::vector<cv::Point> &contour)
-{
+{   
+    if (contour.empty()){
+        return 0; // Invalid contour
+    }   
 
     // Compute Convex Hull
     std::vector<cv::Point> hull;
@@ -97,6 +100,11 @@ std::vector<std::vector<cv::Point>> SolidityFilter::getValidContours(std::vector
     std::vector<std::vector<cv::Point>> validContours;
     for (auto contour : contours)
     {
+        if (contour.size() < 3)
+        {
+            continue; // skip small contours
+        }
+
         std::vector<cv::Point> hull;
         cv::convexHull(contour, hull);
         double area = cv::contourArea(contour);
@@ -796,7 +804,13 @@ HandDataOutput getHandDataFromState(const HandTrackingState& handTrackingState)
     bool noDefects = handTrackingState.convexityDefects.size() == 0;
     bool onlyObtuse = onlyObtuseDefects(handTrackingState.convexityDefects);
 
-
+    // print the tracking box
+    if (DEBUG)
+    {
+        std::cout << "TrackingRect(topLeft: (" << handTrackingState.trackingBox.topLeft.x << ", " << handTrackingState.trackingBox.topLeft.y
+        << "), middleY: " << handTrackingState.trackingBox.middleY
+        << ", bottomRight: (" << handTrackingState.trackingBox.bottomRight.x << ", " << handTrackingState.trackingBox.bottomRight.y << "))" << std::endl;
+    }
     
     if (emptyContour || indexFingerOutOfBounds)
     {

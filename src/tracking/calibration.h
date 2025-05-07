@@ -24,8 +24,7 @@ class TrackingRect{
         int middleY;
         cv::Point bottomRight;
         
-
-        TrackingRect() : topLeft(0, 0), middleY(0), bottomRight(0, 0) {}
+        TrackingRect() : topLeft(100, 100), middleY(200), bottomRight(300, 300) {}
 
         /***
          * 
@@ -42,7 +41,17 @@ class TrackingRect{
          * 
          */
         TrackingRect(cv::Point topLeft, int middleY, cv::Point bottomRight){
-            if (bottomRight.x <= topLeft.x || bottomRight.y <= topLeft.y || middleY <= topLeft.y || middleY >= bottomRight.y){
+            if (bottomRight.x <= topLeft.x || 
+                bottomRight.y <= topLeft.y || 
+                middleY <= topLeft.y || 
+                middleY >= bottomRight.y){
+
+                std::cout << "bottomRight.x <= topLeft.x: " << bottomRight.x << " <= " << topLeft.x << std::endl;
+                std::cout << "bottomRight.y <= topLeft.y: " << bottomRight.y << " <= " << topLeft.y << std::endl;
+                std::cout << "middleY <= topLeft.y: " << middleY << " <= " << topLeft.y << std::endl;
+                std::cout << "middleY >= bottomRight.y: " << middleY << " >= " << bottomRight.y << std::endl;
+
+
                 throw std::invalid_argument("Invalid tracking box dimensions");
             }
             this->topLeft = topLeft;
@@ -100,7 +109,7 @@ class TrackingRect{
 
 
 colorRange parseColorRange(std::string path);
-TrackingRect parseTrackingBox(std::string path);
+ TrackingRect parseTrackingBox(std::string path);
 
 // updates teh color range in the file
 void calibrateColorRange();

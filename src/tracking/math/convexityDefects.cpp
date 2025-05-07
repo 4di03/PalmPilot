@@ -24,7 +24,7 @@ struct PointComparator {
 std::vector<ConvexityDefect> getConvexityDefects(const std::vector<cv::Point>& contour, const std::vector<int>& hullIndices, const std::vector<int>& fingertipIndices){
     if (contour.empty() || hullIndices.empty()){
         std::cerr << "Error: Empty contour passed to getConvexityDefects" << std::endl;
-        exit(1);
+        return std::vector<ConvexityDefect>();
     }
 
 
