@@ -14,3 +14,10 @@ int testFunction(unsigned char a, unsigned char b)
 
     return product;
 }
+
+
+int smartProduct(int a, int b)
+{
+    return a * b;
+}
+
