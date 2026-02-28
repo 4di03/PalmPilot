@@ -1,6 +1,11 @@
 #include <opencv2/opencv.hpp>
+#ifdef __APPLE__
 #define COLOR_RANGE_FILE "/Users/adithyapalle/work/PalmPilot/data/color_range.yaml"
 #define TRACKING_BOX_FILE "/Users/adithyapalle/work/PalmPilot/data/tracking_box.yaml"
+#else
+#define COLOR_RANGE_FILE "/home/user/PalmPilot/data/color_range.yaml"
+#define TRACKING_BOX_FILE "/home/user/PalmPilot/data/tracking_box.yaml"
+#endif
 #pragma once
 // Struct to represent color range
 struct colorRange {

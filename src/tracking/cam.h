@@ -21,6 +21,15 @@ class VideoStream{
 
     }
 
+    VideoStream(std::string videoPath, int frameWidth = FRAME_WIDTH, int frameHeight = FRAME_HEIGHT){
+        this->cap = cv::VideoCapture(videoPath);
+        if (!cap.isOpened()) {
+            std::cerr << "Error: Could not open video file: " << videoPath << std::endl;
+            exit(1);
+        }
+        this->frameSize = cv::Size(frameWidth,frameHeight);
+    }
+
     cv::Size getFrameSize(){
         return this->frameSize;
     }

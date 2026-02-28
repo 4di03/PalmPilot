@@ -846,7 +846,7 @@ HandDataOutput FastTracker::getHandData(const cv::Mat &image, const HandTracking
 
     HandTrackingState curTrackingState =  getHandTrackingState(image, previousTrackingState);
 
-    return getHandDataFromState(previousTrackingState);
+    return getHandDataFromState(curTrackingState);
 }
 
 /**

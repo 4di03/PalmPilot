@@ -8,5 +8,5 @@ void plotHandKeypoints(HandKeypointTracker* tracker);
 // Displays the hand data on the image
 void displayHandData(cv::Mat& img, HandData& handData);
 
-// gets hand data in each frame
-void runHandTracking(HandTracker* tracker);
+// gets hand data in each frame. videoPath: path to video file, empty string for webcam
+void runHandTracking(HandTracker* tracker, std::string videoPath = "");

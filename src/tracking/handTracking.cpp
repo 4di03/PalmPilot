@@ -138,7 +138,7 @@ void plotHandKeypoints(HandKeypointTracker *tracker)
     }
 }
 
-void runHandTracking(HandTracker *tracker)
+void runHandTracking(HandTracker *tracker, std::string videoPath)
 {
 
     if (cv::ocl::haveOpenCL())
@@ -151,7 +151,15 @@ void runHandTracking(HandTracker *tracker)
         std::cout << "OpenCL is not available on this system." << std::endl;
     }
     {
-        VideoStream stream(0);
+        VideoStream stream = videoPath.empty() ? VideoStream(0) : VideoStream(videoPath);
+
+        // set up output video writer when processing a file
+        cv::VideoWriter outputVideo;
+        if (!videoPath.empty()) {
+            outputVideo.open("output_annotated.avi",
+                             cv::VideoWriter::fourcc('M','J','P','G'),
+                             10, stream.getFrameSize());
+        }
         int ct = 0;
         // record start time
         auto firstStart = std::chrono::high_resolution_clock::now();
@@ -163,9 +171,10 @@ void runHandTracking(HandTracker *tracker)
             frameCount++;
             cv::Mat frame = stream.getFrame();
 
-            // Check if the frame is empty
+            // Check if the frame is empty (end of video file or camera failure)
             if (frame.empty())
             {
+                if (!videoPath.empty()) break; // normal end of video file
                 std::cerr << "Error: Failed to capture frame." << std::endl;
                 break;
             }
@@ -198,19 +207,23 @@ void runHandTracking(HandTracker *tracker)
                 ct = 0; // reset the counter to avoid overflow
             }
 
-            // if the keypoints are found, draw them on the image, else use the previous keypoints
-            // auto start = std::chrono::high_resolution_clock::now();
-            // if (DEBUG){
             displayHandData(frame, handData);
-            //}
-            // auto end = std::chrono::high_resolution_clock::now();
-            // std::chrono::duration<double, std::milli> elapsed = end - start;
-            // std::cout << "drawKeypoints Execution time: " << elapsed.count() << " ms\n";
 
-            cv::imshow("Webcam Stream with hands", frame);
+            // print per-frame detection result
+            std::cout << "frame=" << frameCount
+                      << " handDetected=" << (handData.handDetected ? "true" : "false")
+                      << " fingers=" << handData.numFingersRaised
+                      << " indexFinger=(" << handData.indexFingerPosition.x << "," << handData.indexFingerPosition.y << ")"
+                      << std::endl;
+
+            if (outputVideo.isOpened()) {
+                outputVideo.write(frame);
+            } else {
+                cv::imshow("Webcam Stream with hands", frame);
+            }
 
             // print the frame rate every 100 frames
-            if (frameCount % 100 == 0)
+            if (frameCount % 100 == 0 && frameCount > 0)
             {
                 auto end = std::chrono::high_resolution_clock::now();
                 std::chrono::duration<double, std::milli> elapsed = end - firstStart;
@@ -220,8 +233,8 @@ void runHandTracking(HandTracker *tracker)
                 frameCount = 0;
             }
 
-            // Exit the loop when 'q' is pressed
-            if (cv::waitKey(1) == 'q')
+            // Exit the loop when 'q' is pressed (webcam mode) or video ends (file mode)
+            if (videoPath.empty() && cv::waitKey(1) == 'q')
             {
                 break;
             }
