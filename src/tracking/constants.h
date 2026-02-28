@@ -22,3 +22,7 @@
 
 #define CIRCULARITY_THRESHOLD 0.77 
 #define MAX_INSCRIBING_CIRCLE_CONTOUR_DIST 6
+
+// Number of consecutive frames without a hand before reporting handDetected=false.
+// Prevents single-frame drop-outs from flickering the detection state.
+#define NO_HAND_DEBOUNCE_FRAMES 3

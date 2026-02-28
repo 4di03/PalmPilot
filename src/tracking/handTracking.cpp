@@ -165,6 +165,10 @@ void runHandTracking(HandTracker *tracker, std::string videoPath)
         auto firstStart = std::chrono::high_resolution_clock::now();
 
         int frameCount = 0;
+        static TrackingRect trackingBox = parseTrackingBox(TRACKING_BOX_FILE);
+        HandTrackingState previousTrackingState;  // persists across frames for temporal stability
+        HandData handData = HandData{cv::Point(-1, -1), 0, false};
+        int consecutiveNoHandFrames = 0;
         while (true)
         {
             ct++;
@@ -178,23 +182,26 @@ void runHandTracking(HandTracker *tracker, std::string videoPath)
                 std::cerr << "Error: Failed to capture frame." << std::endl;
                 break;
             }
-            HandData handData = HandData{cv::Point(-1, -1), 0, false};
-
-            static TrackingRect trackingBox = parseTrackingBox(TRACKING_BOX_FILE);
-
-            HandTrackingState previousTrackingState = HandTrackingState{std::vector<cv::Point>(),
-                                                                        std::vector<cv::Point>(),
-                                                                        std::vector<ConvexityDefect>(),
-                                                                        cv::Point(-1, -1),
-                                                                        std::vector<int>(),
-                                                                        trackingBox};
             if (ct % INTERP_INTERVAL == 0)
             {
 
                 auto start = std::chrono::high_resolution_clock::now();
                 HandDataOutput handDataOutput = tracker->getHandData(frame, previousTrackingState);
-                handData = handDataOutput.handData;
+                HandData newHandData = handDataOutput.handData;
                 previousTrackingState = handDataOutput.trackingState;
+
+                // Temporal debounce: only report "no hand" after NO_HAND_DEBOUNCE_FRAMES
+                // consecutive frames without a detection, to suppress single-frame drop-outs.
+                if (!newHandData.handDetected) {
+                    consecutiveNoHandFrames++;
+                    if (consecutiveNoHandFrames >= NO_HAND_DEBOUNCE_FRAMES) {
+                        handData = newHandData;
+                    }
+                    // else: keep the last known good handData
+                } else {
+                    consecutiveNoHandFrames = 0;
+                    handData = newHandData;
+                }
 
                 auto end = std::chrono::high_resolution_clock::now();
                 std::chrono::duration<double, std::milli> elapsed = end - start;
