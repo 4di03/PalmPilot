@@ -1,0 +1,12 @@
+[
+  {
+    "subreddit": "nonprofit",
+    "title": "How does your org track grant deadlines? Looking for something better than a spreadsheet",
+    "body": "We're a small org (4 staff) and currently managing about 15 active grants in an Excel sheet. Funder requirements, report due dates, budget check-ins — it's all there but it's getting messy and I worry we're going to miss something.\n\nI've looked at full donor CRMs but they're either way too expensive or way too complicated for what we actually need. We don't need a CRM, we need something that just tracks grants and yells at us before a deadline.\n\nDoes anyone have a system that works? Or is everyone else also just using spreadsheets and hoping?\n\nSide note — I'm building something specifically for this problem if anyone wants early access: LANDING_PAGE_URL"
+  },
+  {
+    "subreddit": "fundraising",
+    "title": "Grant reporting deadlines — what's your tracking system?",
+    "body": "Curious what small nonprofits are actually using to track grant cycles. We've got about 12 active grants right now and the reporting requirements are all over the place — some quarterly, some annual, different budget templates for each funder.\n\nRight now it's a shared Google Sheet and a prayer. Had a close call last month where a report was due before I'd noticed it on the sheet.\n\nI'm putting together a simple tool for exactly this — funder requirements, deadline reminders, doc storage per grant. Would love input from people who'd actually use it: LANDING_PAGE_URL"
+  }
+]

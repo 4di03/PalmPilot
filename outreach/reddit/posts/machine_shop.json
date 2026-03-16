@@ -1,0 +1,12 @@
+[
+  {
+    "subreddit": "machinists",
+    "title": "How do you track preventive maintenance on your machines?",
+    "body": "Small shop here, 8 machines. We've been doing maintenance tracking in a binder and a whiteboard but it's getting hard to keep up with. Had a lathe go down last month for 2 days because a simple lubrication thing got missed.\n\nLooking for a better way to track service intervals, log repairs, and get reminded before something's due. Tried a couple of CMMS tools but they're all priced and built for big facilities teams, not a 5-person shop.\n\nWhat are other small shops doing? Spreadsheet? Something else?\n\nAlso building something simpler and cheaper for small shops if anyone wants to check it out: LANDING_PAGE_URL"
+  },
+  {
+    "subreddit": "metalworking",
+    "title": "Preventive maintenance tracking for small shops — what's everyone using?",
+    "body": "Got 6 machines and I'm embarrassed to admit that 'the system' is basically a whiteboard and memory. We do okay but I know we're eventually going to miss something important.\n\nThe enterprise CMMS stuff I've found is way overkill — I don't need asset hierarchies and work order workflows, I just need to know when the Haas is due for oil and who did what last time.\n\nAnyone found something that actually fits a small shop without costing $200/month? Building something along these lines myself actually — LANDING_PAGE_URL"
+  }
+]

@@ -1,0 +1,12 @@
+[
+  {
+    "subreddit": "webdev",
+    "title": "How are you handling ADA/WCAG compliance for client sites?",
+    "body": "Run a small web agency and I've been getting more questions from clients about ADA compliance lately, especially after a couple of local businesses in our area got demand letters.\n\nRight now I'm doing manual audits with axe DevTools which works but doesn't scale when you've got 20 client sites to keep an eye on. Looking for something that can scan on a schedule and flag regressions after content updates — not just a one-time report.\n\nIs anyone running something systematic for this? The tools I've found are either one-time scanners or priced for enterprise.\n\nBuilding something for agencies managing multiple client sites — interested in feedback: LANDING_PAGE_URL"
+  },
+  {
+    "subreddit": "freelance",
+    "title": "ADA compliance — are you offering this to clients? How are you handling it?",
+    "body": "Doing more web work for local businesses and ADA is coming up a lot. Clients are nervous about lawsuits (rightfully so — the volume of demand letters has gone up a lot) and asking if I can help.\n\nThe problem is the tools I know of are either one-time audit reports or enterprise SaaS that costs more than most of my clients want to spend on the whole project. I want something I can run for multiple clients on a schedule.\n\nCurious how others are handling this. I'm also putting something together for this — LANDING_PAGE_URL"
+  }
+]

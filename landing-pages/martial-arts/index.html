@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Less admin, more mat time — DojoLog</title>
+  <meta name="description" content="For dojos under 150 students — member records, attendance, belt testing, and billing in one place.">
+  <link rel="stylesheet" href="../shared/style.css">
+  <style>:root { --accent: #dc2626; }</style>
+</head>
+<body>
+  <div class="page">
+    <span class="label">Martial Arts School Owners</span>
+    <h1>Spend less time on admin.<br>More time on the mat.</h1>
+    <p class="sub">Member records, attendance tracking, belt testing, and billing — all in one place. Built for dojos under 150 students where the instructor is also the owner.</p>
+
+    <ul class="benefits">
+      <li>Track attendance without paper sign-in sheets</li>
+      <li>Know exactly which students are ready for belt testing</li>
+      <li>Automated billing so you stop chasing tuition payments</li>
+      <li>Member profiles with emergency contacts and medical notes</li>
+    </ul>
+
+    <span class="form-label">Get early access — free while in beta</span>
+    <form
+      class="form"
+      action="https://formspree.io/f/FORMSPREE_ID"
+      method="POST"
+    >
+      <input type="hidden" name="niche" value="martial-arts">
+      <input type="text" name="name" placeholder="Your name" required autocomplete="name">
+      <input type="email" name="email" placeholder="Your email" required autocomplete="email">
+      <button type="submit">Get early access →</button>
+      <p class="privacy">No spam. Just a heads-up when it's ready.</p>
+    </form>
+
+    <hr>
+    <p class="footer">DojoLog &mdash; built for small dojos, not franchise chains.</p>
+  </div>
+</body>
+</html>

@@ -1,0 +1,128 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #fff;
+  color: #111;
+  line-height: 1.6;
+}
+
+.page {
+  max-width: 580px;
+  margin: 0 auto;
+  padding: 3.5rem 1.5rem 5rem;
+}
+
+.label {
+  display: inline-block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 1.25rem;
+}
+
+h1 {
+  font-size: 2.1rem;
+  font-weight: 800;
+  line-height: 1.15;
+  color: #0d0d0d;
+  margin-bottom: 1rem;
+}
+
+.sub {
+  font-size: 1.05rem;
+  color: #555;
+  margin-bottom: 2.25rem;
+  max-width: 480px;
+}
+
+.benefits {
+  list-style: none;
+  margin-bottom: 2.75rem;
+}
+
+.benefits li {
+  padding: 0.45rem 0 0.45rem 1.6rem;
+  color: #333;
+  font-size: 0.98rem;
+  position: relative;
+}
+
+.benefits li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.75rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+input[type="email"],
+input[type="text"] {
+  padding: 0.85rem 1rem;
+  border: 2px solid #e2e2e2;
+  border-radius: 7px;
+  font-size: 1rem;
+  outline: none;
+  transition: border-color 0.15s;
+  width: 100%;
+}
+
+input[type="email"]:focus,
+input[type="text"]:focus {
+  border-color: var(--accent);
+}
+
+button[type="submit"] {
+  padding: 0.9rem 1rem;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 7px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  letter-spacing: 0.01em;
+}
+
+button[type="submit"]:hover {
+  opacity: 0.87;
+}
+
+.privacy {
+  font-size: 0.78rem;
+  color: #aaa;
+  margin-top: 0.35rem;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid #f0f0f0;
+  margin: 3rem 0 2rem;
+}
+
+.footer {
+  font-size: 0.82rem;
+  color: #bbb;
+}
+
+@media (max-width: 480px) {
+  h1 { font-size: 1.7rem; }
+  .page { padding: 2.5rem 1.25rem 4rem; }
+}

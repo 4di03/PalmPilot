@@ -1,0 +1,12 @@
+[
+  {
+    "subreddit": "foodtrucks",
+    "title": "How are you tracking permits across multiple cities?",
+    "body": "Running in 3 cities now and the permit situation is getting out of hand. Health permits, fire certs, commissary agreements, vendor licenses — all expiring at different times through different county portals. I've been using a Google Sheet but I missed a renewal last year and got hit with a $400 fine.\n\nCurious how other operators handle this. Is there something better out there or is everyone just using calendar reminders and hoping for the best?\n\nAlso building something specifically for this if anyone wants to try it early: LANDING_PAGE_URL"
+  },
+  {
+    "subreddit": "smallbusiness",
+    "title": "Food truck operators — how do you stay on top of permit renewals?",
+    "body": "I run a food truck and the permit paperwork is genuinely one of the worst parts of the job. Between the health department, fire marshal, commissary, and city vendor permits, I'm tracking maybe 12 different expiration dates across 3 jurisdictions.\n\nRight now I use a spreadsheet and set Google Calendar reminders but I still managed to miss one last year. Wondering if anyone has a better system.\n\nI'm actually putting together a simple tool just for this — happy to share if there's interest: LANDING_PAGE_URL"
+  }
+]

@@ -1,0 +1,10 @@
+[[redirects]]
+  from = "/"
+  to = "/food-truck/index.html"
+  status = 302
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
